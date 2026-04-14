@@ -37,4 +37,4 @@ jobs:
 
     # Langkah 6: Menguji Docker Compose (Memastikan Node & DB bisa berjalan bersama)
     - name: Test Docker Compose Build
-      run: docker-compose up -d --build
+      run: docker compose up -d --build
