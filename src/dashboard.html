@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Sistem Terintegrasi - TrustMarket</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-layer-group"></i> TrustMarket</h2>
+            <p id="sidebar-role-desc">Sistem Terintegrasi</p>
+        </div>
+        <div class="sidebar-menu" id="nav-menu">
+            <a href="#" onclick="showMenu(event, 'dashboard')" class="nav-link active-nav menu-item" data-access="admin,seller,user"><i class="fas fa-home"></i> Beranda</a>
+            
+            <a href="#" onclick="showMenu(event, 'katalog-produk')" class="nav-link menu-item" data-access="user"><i class="fas fa-store"></i> Katalog Belanja <span class="role-badge role-user">User</span></a>
+
+            <a href="#" onclick="showMenu(event, 'keranjang-belanja')" class="nav-link menu-item" data-access="user"><i class="fas fa-basket-shopping"></i> Keranjang <span class="cart-count-badge" id="cart-count">0</span></a>
+
+            <a href="#" onclick="showMenu(event, 'manajemen-produk')" class="nav-link menu-item" data-access="seller"><i class="fas fa-box-open"></i> Produk <span class="role-badge role-seller">Seller</span></a>
+            
+            <a href="#" onclick="showMenu(event, 'transaksi')" class="nav-link menu-item" data-access="seller,user"><i class="fas fa-shopping-cart"></i> Transaksi</a>
+            
+            <a href="#" onclick="showMenu(event, 'manajemen-user')" class="nav-link menu-item" data-access="admin"><i class="fas fa-users"></i> Pengguna <span class="role-badge role-admin">Admin</span></a>
+            
+            <a href="#" onclick="showMenu(event, 'laporan')" class="nav-link menu-item" data-access="admin"><i class="fas fa-chart-line"></i> Laporan <span class="role-badge role-admin">Admin</span></a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <h1 id="page-title">Beranda Dashboard</h1>
+            <div class="header-controls">
+                
+                <div class="role-display">
+                    <i class="fas fa-user-shield"></i>
+                    <label id="current-role-display">Administrator (Admin)</label>
+                </div>
+
+                <a href="login.html" class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</a>
+            </div>
+        </div>
+
+        <div class="content-container">
+            <div id="dashboard" class="card active">
+                <div id="dynamic-stats-grid" class="stats-grid"></div>
+
+                <!-- Admin Overview Panel -->
+                <div id="admin-overview-panel" style="display:none;">
+                    <div class="admin-panels-row">
+                        <!-- Recent Activity -->
+                        <div class="admin-panel-box">
+                            <div class="admin-panel-header">
+                                <span><i class="fas fa-clock"></i> Aktivitas Terbaru</span>
+                                <a href="#" onclick="showMenu(event,'laporan')" class="admin-panel-link">Lihat Semua</a>
+                            </div>
+                            <div class="admin-activity-list">
+                                <div class="admin-activity-item">
+                                    <span class="activity-dot dot-green"></span>
+                                    <div class="activity-info">
+                                        <span class="activity-text">Login berhasil oleh <strong>Budi Santoso</strong></span>
+                                        <span class="activity-time">2 menit lalu</span>
+                                    </div>
+                                </div>
+                                <div class="admin-activity-item">
+                                    <span class="activity-dot dot-blue"></span>
+                                    <div class="activity-info">
+                                        <span class="activity-text">Pengguna baru didaftarkan: <strong>Siti Rahayu</strong></span>
+                                        <span class="activity-time">15 menit lalu</span>
+                                    </div>
+                                </div>
+                                <div class="admin-activity-item">
+                                    <span class="activity-dot dot-orange"></span>
+                                    <div class="activity-info">
+                                        <span class="activity-text">Produk dihapus oleh <strong>Seller A</strong></span>
+                                        <span class="activity-time">1 jam lalu</span>
+                                    </div>
+                                </div>
+                                <div class="admin-activity-item">
+                                    <span class="activity-dot dot-red"></span>
+                                    <div class="activity-info">
+                                        <span class="activity-text">Login gagal (IP: 192.168.1.25)</span>
+                                        <span class="activity-time">2 jam lalu</span>
+                                    </div>
+                                </div>
+                                <div class="admin-activity-item">
+                                    <span class="activity-dot dot-green"></span>
+                                    <div class="activity-info">
+                                        <span class="activity-text">Transaksi berhasil oleh <strong>Ahmad Fauzi</strong></span>
+                                        <span class="activity-time">3 jam lalu</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="admin-panel-box">
+                            <div class="admin-panel-header">
+                                <span><i class="fas fa-bolt"></i> Aksi Cepat</span>
+                            </div>
+                            <div class="admin-quick-actions">
+                                <button class="quick-action-btn qa-blue" onclick="showMenu(event,'manajemen-user'); bukaModalUser()">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Tambah Pengguna</span>
+                                </button>
+                                <button class="quick-action-btn qa-purple" onclick="showMenu(event,'laporan')">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <span>Lihat Laporan</span>
+                                </button>
+                                <button class="quick-action-btn qa-green" onclick="showMenu(event,'manajemen-user')">
+                                    <i class="fas fa-users-gear"></i>
+                                    <span>Kelola Pengguna</span>
+                                </button>
+                                <button class="quick-action-btn qa-orange" onclick="exportLogCSV()">
+                                    <i class="fas fa-file-export"></i>
+                                    <span>Export Log</span>
+                                </button>
+                            </div>
+
+                            <!-- System Health -->
+                            <div class="admin-panel-header" style="margin-top:18px;">
+                                <span><i class="fas fa-server"></i> Status Sistem</span>
+                            </div>
+                            <div class="system-health-list">
+                                <div class="health-item">
+                                    <span class="health-label"><i class="fas fa-circle-dot"></i> Database</span>
+                                    <span class="health-badge badge-ok">Online</span>
+                                </div>
+                                <div class="health-item">
+                                    <span class="health-label"><i class="fas fa-circle-dot"></i> Auth Service</span>
+                                    <span class="health-badge badge-ok">Online</span>
+                                </div>
+                                <div class="health-item">
+                                    <span class="health-label"><i class="fas fa-circle-dot"></i> Payment Gateway</span>
+                                    <span class="health-badge badge-warn">Lambat</span>
+                                </div>
+                                <div class="health-item">
+                                    <span class="health-label"><i class="fas fa-circle-dot"></i> Log Service</span>
+                                    <span class="health-badge badge-ok">Online</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="section-title"><i class="fas fa-wave-square"></i> Ringkasan Sistem</h3>
+                <p>Selamat datang di panel kontrol. Informasi di atas disesuaikan dengan hak akses Anda.</p>
+                <div id="seller-dashboard-panel" class="seller-dashboard-panel" style="display:none;">
+                    <div class="seller-insight-card">
+                        <span class="seller-insight-icon bg-blue-soft"><i class="fas fa-boxes-stacked"></i></span>
+                        <div>
+                            <strong id="seller-stock-summary">0 stok tersedia</strong>
+                            <p>Total stok aktif dari semua produk toko.</p>
+                        </div>
+                    </div>
+                    <div class="seller-insight-card">
+                        <span class="seller-insight-icon bg-orange-soft"><i class="fas fa-triangle-exclamation"></i></span>
+                        <div>
+                            <strong id="seller-low-stock-summary">0 produk perlu restock</strong>
+                            <p>Produk dengan stok di bawah 10 unit.</p>
+                        </div>
+                    </div>
+                    <div class="seller-insight-card">
+                        <span class="seller-insight-icon bg-green-soft"><i class="fas fa-chart-line"></i></span>
+                        <div>
+                            <strong id="seller-top-product">Belum ada produk terlaris</strong>
+                            <p>Dipakai sebagai fokus promosi toko.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="katalog-produk" class="card">
+                <h3 class="section-title"><i class="fas fa-store"></i> Katalog Belanja (D2)</h3>
+                <p>Silakan pilih dan pesan barang yang Anda inginkan.</p>
+                
+                <div class="catalog-grid">
+                    <div class="product-card">
+                        <div class="product-icon"><i class="fas fa-shoe-prints"></i></div>
+                        <div class="product-title">Sepatu Kets Retro</div>
+                        <div class="product-price">Rp 250.000</div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
+                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button class="btn-buy" onclick="tambahKeranjang('Sepatu Kets Retro', 250000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
+                    </div>
+                    
+                    <div class="product-card">
+                        <div class="product-icon"><i class="fas fa-tshirt"></i></div>
+                        <div class="product-title">Kemeja Flanel Original</div>
+                        <div class="product-price">Rp 150.000</div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
+                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button class="btn-buy" onclick="tambahKeranjang('Kemeja Flanel Original', 150000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
+                    </div>
+
+                    <div class="product-card">
+                        <div class="product-icon"><i class="fas fa-glasses"></i></div>
+                        <div class="product-title">Kacamata Hitam Y2K</div>
+                        <div class="product-price">Rp 120.000</div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
+                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button class="btn-buy" onclick="tambahKeranjang('Kacamata Hitam Y2K', 120000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
+                    </div>
+
+                    <div class="product-card">
+                        <div class="product-icon"><i class="fas fa-headphones"></i></div>
+                        <div class="product-title">Headphone Wireless</div>
+                        <div class="product-price">Rp 450.000</div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
+                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button class="btn-buy" onclick="tambahKeranjang('Headphone Wireless', 450000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="keranjang-belanja" class="card cart-page-card">
+                <h3 class="section-title"><i class="fas fa-basket-shopping"></i> Keranjang</h3>
+                <div class="cart-layout">
+                    <div class="cart-main">
+                        <div class="cart-select-bar">
+                            <label class="cart-checkline">
+                                <input type="checkbox" id="cart-select-all" onchange="togglePilihSemua(this.checked)">
+                                <span>Pilih Semua (<span id="cart-item-count">0</span>)</span>
+                            </label>
+                        </div>
+
+                        <div id="cart-empty-state" class="cart-empty-state">
+                            <i class="fas fa-cart-shopping"></i>
+                            <h4>Keranjang masih kosong</h4>
+                            <p>Pilih produk dari katalog untuk mulai belanja.</p>
+                            <button class="btn-cart-shop" onclick="showMenu(null, 'katalog-produk')">Belanja Sekarang</button>
+                        </div>
+
+                        <div id="cart-shop-section" class="cart-shop-section" style="display:none;">
+                            <div class="cart-shop-header">
+                                <label class="cart-checkline">
+                                    <input type="checkbox" id="cart-shop-check" onchange="togglePilihSemua(this.checked)">
+                                    <span><i class="fas fa-store"></i> TrustMarket Official</span>
+                                </label>
+                            </div>
+                            <div id="cart-items-list" class="cart-items-list"></div>
+                        </div>
+                    </div>
+
+                    <aside class="cart-summary-card">
+                        <h3>Ringkasan belanja</h3>
+                        <div class="cart-summary-row">
+                            <span>Total</span>
+                            <strong id="cart-summary-total">-</strong>
+                        </div>
+                        <button class="cart-promo-box" type="button">
+                            <span class="promo-ticket"><i class="fas fa-ticket"></i></span>
+                            <span id="cart-promo-text">Pilih barang dulu sebelum pakai promo</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button class="btn-cart-buy" id="cart-buy-btn" onclick="checkoutSelected()" disabled>Beli</button>
+                    </aside>
+                </div>
+            </div>
+
+            <div id="manajemen-produk" class="card">
+                <h3 class="section-title"><i class="fas fa-box-open"></i> Manajemen Produk (D2)</h3>
+                <p>Kelola inventaris Anda di sini. Tambah, edit, atau hapus produk.</p>
+                <div class="seller-product-toolbar">
+                    <div class="seller-product-copy">
+                        <strong id="seller-product-count">0 produk aktif</strong>
+                        <span id="seller-stock-count">0 stok tersedia</span>
+                    </div>
+                    <button class="action-btn" onclick="bukaModalProduk()"><i class="fas fa-plus"></i> Tambah Produk</button>
+                </div>
+                <div class="table-scroll">
+                    <table id="tabel-produk">
+                        <thead><tr><th>ID</th><th>Nama Produk</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>PRD-001</td><td>Sepatu Kets Retro</td><td>Rp 250.000</td><td>45</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>PRD-002</td><td>Kemeja Flanel Original</td><td>Rp 150.000</td><td>8</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>PRD-003</td><td>Kacamata Hitam Y2K</td><td>Rp 120.000</td><td>16</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>PRD-004</td><td>Headphone Wireless</td><td>Rp 450.000</td><td>6</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="transaksi" class="card">
+                <h3 class="section-title"><i class="fas fa-shopping-cart"></i> Data Transaksi (D3)</h3>
+                <p>Pantau status pesanan dan riwayat transaksi toko.</p>
+
+                <!-- Notif jika ada pending dari keranjang -->
+                <div id="notif-pending-checkout" style="display:none; margin-bottom:18px;">
+                    <div class="notif-checkout-bar">
+                        <span><i class="fas fa-shopping-bag"></i> Anda memiliki item yang belum dibayar di keranjang.</span>
+                        <button class="btn-lanjut-bayar" onclick="bukaModalCheckout()"><i class="fas fa-credit-card"></i> Lanjutkan Pembayaran</button>
+                    </div>
+                </div>
+
+                <table id="tabel-transaksi">
+                    <thead>
+                        <tr><th>ID Transaksi</th><th>Produk</th><th>Total</th><th>Status</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="transaksi-empty-state" class="table-empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <strong>Belum ada transaksi</strong>
+                    <span>Pesanan baru akan muncul setelah pembeli menyelesaikan checkout.</span>
+                </div>
+            </div>
+
+            <div id="manajemen-user" class="card">
+                <h3 class="section-title"><i class="fas fa-users"></i> Manajemen Pengguna (D1)</h3>
+                <p>Kelola data User, Seller, dan Admin lainnya di sini.</p>
+
+                <div class="user-toolbar">
+                    <div class="user-search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="user-search-input" placeholder="Cari nama atau email..." oninput="filterTabelUser()">
+                    </div>
+                    <div class="user-filter-group">
+                        <select id="user-filter-role" onchange="filterTabelUser()" class="filter-select">
+                            <option value="">Semua Role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Seller">Seller</option>
+                            <option value="User">User</option>
+                        </select>
+                        <select id="user-filter-status" onchange="filterTabelUser()" class="filter-select">
+                            <option value="">Semua Status</option>
+                            <option value="Aktif">Aktif</option>
+                            <option value="Nonaktif">Nonaktif</option>
+                        </select>
+                        <button class="action-btn" onclick="bukaModalUser()"><i class="fas fa-user-plus"></i> Tambah Pengguna</button>
+                    </div>
+                </div>
+
+                <div class="table-scroll">
+                    <table id="tabel-user">
+                        <thead>
+                            <tr>
+                                <th>ID User</th>
+                                <th>Nama Lengkap</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Terdaftar</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>USR-001</td><td>Budi Santoso</td><td>budi@example.com</td>
+                                <td><span class="role-badge role-user">User</span></td>
+                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
+                                <td>2025-01-10</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>USR-002</td><td>Siti Rahayu</td><td>siti.r@gmail.com</td>
+                                <td><span class="role-badge role-seller">Seller</span></td>
+                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
+                                <td>2025-02-14</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>USR-003</td><td>Ahmad Fauzi</td><td>ahmad.f@mail.co</td>
+                                <td><span class="role-badge role-admin">Admin</span></td>
+                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
+                                <td>2024-11-03</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>USR-004</td><td>Dewi Lestari</td><td>dewi.ls@yahoo.com</td>
+                                <td><span class="role-badge role-user">User</span></td>
+                                <td><span class="user-status-badge status-nonaktif"><i class="fas fa-circle"></i> Nonaktif</span></td>
+                                <td>2025-03-22</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>USR-005</td><td>Rizky Maulana</td><td>rizky.m@store.id</td>
+                                <td><span class="role-badge role-seller">Seller</span></td>
+                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
+                                <td>2025-04-01</td>
+                                <td>
+                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
+                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-info">
+                    <span id="user-count-info">Menampilkan <strong>5</strong> pengguna</span>
+                </div>
+            </div>
+
+            <div id="laporan" class="card">
+                <h3 class="section-title"><i class="fas fa-chart-line"></i> Log Aktivitas Sistem (D4)</h3>
+                <p>Catatan seluruh aktivitas yang terekam di database sistem TrustMarket.</p>
+
+                <div class="log-toolbar">
+                    <div class="user-search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="log-search-input" placeholder="Cari aktivitas atau aktor..." oninput="filterTabelLog()">
+                    </div>
+                    <div class="user-filter-group">
+                        <select id="log-filter-type" onchange="filterTabelLog()" class="filter-select">
+                            <option value="">Semua Tipe</option>
+                            <option value="Login">Login</option>
+                            <option value="Transaksi">Transaksi</option>
+                            <option value="Produk">Produk</option>
+                            <option value="Pengguna">Pengguna</option>
+                            <option value="Keamanan">Keamanan</option>
+                        </select>
+                        <select id="log-filter-severity" onchange="filterTabelLog()" class="filter-select">
+                            <option value="">Semua Level</option>
+                            <option value="INFO">Info</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="ERROR">Error</option>
+                            <option value="SUCCESS">Success</option>
+                        </select>
+                        <button class="action-btn action-btn-outline" onclick="exportLogCSV()">
+                            <i class="fas fa-file-csv"></i> Export CSV
+                        </button>
+                        <button class="action-btn" onclick="refreshLog()">
+                            <i class="fas fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="log-summary-chips">
+                    <span class="log-chip chip-total"><i class="fas fa-list"></i> <span id="log-total-count">89</span> Total Log</span>
+                    <span class="log-chip chip-success"><i class="fas fa-check-circle"></i> <span id="log-success-count">71</span> Sukses</span>
+                    <span class="log-chip chip-warning"><i class="fas fa-exclamation-triangle"></i> <span id="log-warning-count">12</span> Warning</span>
+                    <span class="log-chip chip-error"><i class="fas fa-times-circle"></i> <span id="log-error-count">6</span> Error</span>
+                </div>
+
+                <div class="table-scroll">
+                    <table id="tabel-log">
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Tipe</th>
+                                <th>Level</th>
+                                <th>Aktivitas Log</th>
+                                <th>Aktor</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-tbody">
+                            <tr data-type="Login" data-severity="SUCCESS">
+                                <td class="log-time">2026-04-13 10:00</td>
+                                <td><span class="log-type-badge type-login">Login</span></td>
+                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
+                                <td>Login berhasil</td><td>Budi Santoso (User)</td><td class="log-ip">192.168.1.10</td>
+                            </tr>
+                            <tr data-type="Transaksi" data-severity="SUCCESS">
+                                <td class="log-time">2026-04-13 10:12</td>
+                                <td><span class="log-type-badge type-transaksi">Transaksi</span></td>
+                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
+                                <td>Checkout berhasil — TRX-0042</td><td>Budi Santoso (User)</td><td class="log-ip">192.168.1.10</td>
+                            </tr>
+                            <tr data-type="Login" data-severity="ERROR">
+                                <td class="log-time">2026-04-13 10:35</td>
+                                <td><span class="log-type-badge type-login">Login</span></td>
+                                <td><span class="log-level-badge level-error">ERROR</span></td>
+                                <td>Login gagal (kata sandi salah)</td><td>Unknown (—)</td><td class="log-ip">192.168.1.25</td>
+                            </tr>
+                            <tr data-type="Pengguna" data-severity="INFO">
+                                <td class="log-time">2026-04-13 10:48</td>
+                                <td><span class="log-type-badge type-pengguna">Pengguna</span></td>
+                                <td><span class="log-level-badge level-info">INFO</span></td>
+                                <td>Pengguna baru didaftarkan</td><td>Administrator (Admin)</td><td class="log-ip">127.0.0.1</td>
+                            </tr>
+                            <tr data-type="Produk" data-severity="INFO">
+                                <td class="log-time">2026-04-13 11:05</td>
+                                <td><span class="log-type-badge type-produk">Produk</span></td>
+                                <td><span class="log-level-badge level-info">INFO</span></td>
+                                <td>Produk PRD-003 diperbarui</td><td>Siti Rahayu (Seller)</td><td class="log-ip">192.168.1.18</td>
+                            </tr>
+                            <tr data-type="Keamanan" data-severity="WARNING">
+                                <td class="log-time">2026-04-13 11:22</td>
+                                <td><span class="log-type-badge type-keamanan">Keamanan</span></td>
+                                <td><span class="log-level-badge level-warning">WARNING</span></td>
+                                <td>Percobaan akses halaman admin tanpa izin</td><td>Unknown (—)</td><td class="log-ip">10.0.0.99</td>
+                            </tr>
+                            <tr data-type="Login" data-severity="SUCCESS">
+                                <td class="log-time">2026-04-13 11:45</td>
+                                <td><span class="log-type-badge type-login">Login</span></td>
+                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
+                                <td>Login berhasil</td><td>Rizky Maulana (Seller)</td><td class="log-ip">192.168.1.30</td>
+                            </tr>
+                            <tr data-type="Transaksi" data-severity="SUCCESS">
+                                <td class="log-time">2026-04-13 12:00</td>
+                                <td><span class="log-type-badge type-transaksi">Transaksi</span></td>
+                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
+                                <td>Pembayaran dikonfirmasi — TRX-0043</td><td>Ahmad Fauzi (Admin)</td><td class="log-ip">127.0.0.1</td>
+                            </tr>
+                            <tr data-type="Pengguna" data-severity="WARNING">
+                                <td class="log-time">2026-04-13 12:30</td>
+                                <td><span class="log-type-badge type-pengguna">Pengguna</span></td>
+                                <td><span class="log-level-badge level-warning">WARNING</span></td>
+                                <td>Akun USR-004 dinonaktifkan oleh admin</td><td>Ahmad Fauzi (Admin)</td><td class="log-ip">127.0.0.1</td>
+                            </tr>
+                            <tr data-type="Produk" data-severity="WARNING">
+                                <td class="log-time">2026-04-13 13:05</td>
+                                <td><span class="log-type-badge type-produk">Produk</span></td>
+                                <td><span class="log-level-badge level-warning">WARNING</span></td>
+                                <td>Stok produk PRD-004 kritis (sisa 6)</td><td>Sistem Otomatis</td><td class="log-ip">—</td>
+                            </tr>
+                            <tr data-type="Keamanan" data-severity="ERROR">
+                                <td class="log-time">2026-04-13 13:40</td>
+                                <td><span class="log-type-badge type-keamanan">Keamanan</span></td>
+                                <td><span class="log-level-badge level-error">ERROR</span></td>
+                                <td>Percobaan brute-force terdeteksi (5x gagal)</td><td>Unknown (—)</td><td class="log-ip">10.0.0.99</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-info">
+                    <span id="log-count-info">Menampilkan <strong>11</strong> entri log</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Produk -->
+    <div id="modal-produk" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="judul-modal-produk">Tambah Produk Baru</h3>
+                <button class="close-btn" onclick="closeModal('modal-produk')">&times;</button>
+            </div>
+            <form id="form-produk">
+                <div class="form-group"><label>Nama Produk</label><input type="text" id="input-nama-produk" class="form-control" required></div>
+                <div class="form-group"><label>Harga (Rp)</label><input type="number" id="input-harga-produk" class="form-control" required></div>
+                <div class="form-group"><label>Stok Awal</label><input type="number" id="input-stok-produk" class="form-control" required></div>
+                <button type="submit" class="action-btn" style="width: 100%; justify-content: center; margin-top: 10px;"><i class="fas fa-save"></i> <span id="btn-text-produk">Simpan Data Produk</span></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal User -->
+    <div id="modal-user" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="judul-modal-user">Tambah Pengguna Baru</h3>
+                <button class="close-btn" onclick="closeModal('modal-user')">&times;</button>
+            </div>
+            <form id="form-user">
+                <div class="form-group"><label>Nama Lengkap</label><input type="text" id="input-nama-user" class="form-control" placeholder="Contoh: Budi Santoso" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="input-email-user" class="form-control" placeholder="email@example.com"></div>
+                <div class="form-group"><label>Hak Akses (Role)</label>
+                    <select id="input-role-user" class="form-control" required>
+                        <option value="User">User</option><option value="Seller">Seller</option><option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Status Akun</label>
+                    <select id="input-status-user" class="form-control">
+                        <option value="Aktif">Aktif</option><option value="Nonaktif">Nonaktif</option>
+                    </select>
+                </div>
+                <button type="submit" class="action-btn" style="width: 100%; justify-content: center; margin-top: 10px;"><i class="fas fa-save"></i> <span id="btn-text-user">Simpan Pengguna</span></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== MODAL CHECKOUT ===== -->
+    <div id="modal-checkout" class="modal-overlay modal-checkout-overlay">
+        <div class="modal-checkout-box">
+            <div class="modal-checkout-header">
+                <h3><i class="fas fa-credit-card"></i> Checkout Pembayaran</h3>
+                <button class="close-btn" onclick="closeModal('modal-checkout')">&times;</button>
+            </div>
+            <div class="modal-checkout-body">
+                <!-- KOLOM KIRI -->
+                <div class="checkout-left">
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-map-marker-alt"></i> Alamat Pengiriman</div>
+                        <div class="alamat-box">
+                            <div class="alamat-nama"><i class="fas fa-user"></i> <strong id="co-nama-user">Nama Penerima</strong></div>
+                            <input type="text" id="co-alamat" class="co-input" placeholder="Masukkan alamat lengkap..." value="Jl. Contoh No. 10, Bandung, Jawa Barat">
+                        </div>
+                    </div>
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-store"></i> Daftar Pesanan</div>
+                        <div id="co-daftar-pesanan" class="co-pesanan-list"></div>
+                    </div>
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-truck"></i> Metode Pengiriman</div>
+                        <div class="co-pengiriman-options">
+                            <label class="co-option-item">
+                                <input type="radio" name="pengiriman" value="reguler" checked onchange="hitungTotal()">
+                                <div class="co-option-content">
+                                    <span class="co-option-label">Reguler</span>
+                                    <span class="co-option-price">Rp 15.000 &nbsp;Â·&nbsp; Estimasi 3â€“5 Hari</span>
+                                </div>
+                            </label>
+                            <label class="co-option-item">
+                                <input type="radio" name="pengiriman" value="express" onchange="hitungTotal()">
+                                <div class="co-option-content">
+                                    <span class="co-option-label">Express</span>
+                                    <span class="co-option-price">Rp 25.000 &nbsp;Â·&nbsp; Estimasi 1â€“2 Hari</span>
+                                </div>
+                            </label>
+                            <label class="co-option-item">
+                                <input type="radio" name="pengiriman" value="same_day" onchange="hitungTotal()">
+                                <div class="co-option-content">
+                                    <span class="co-option-label">Same Day</span>
+                                    <span class="co-option-price">Rp 35.000 &nbsp;Â·&nbsp; Tiba Hari Ini</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-sticky-note"></i> Catatan (Opsional)</div>
+                        <textarea id="co-catatan" class="co-textarea" placeholder="Contoh: Tolong dibungkus rapi..." rows="2"></textarea>
+                    </div>
+                </div>
+                <!-- KOLOM KANAN -->
+                <div class="checkout-right">
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-wallet"></i> Metode Pembayaran</div>
+                        <div class="co-payment-options">
+                            <label class="co-pay-item">
+                                <input type="radio" name="pembayaran" value="gopay" checked onchange="hitungTotal()">
+                                <div class="co-pay-content">
+                                    <span class="pay-icon gopay-icon"><i class="fas fa-bolt"></i></span>
+                                    <span>GoPay</span>
+                                </div>
+                            </label>
+                            <label class="co-pay-item">
+                                <input type="radio" name="pembayaran" value="bri" onchange="hitungTotal()">
+                                <div class="co-pay-content">
+                                    <span class="pay-icon bri-icon">BRI</span>
+                                    <span>BRI Virtual Account</span>
+                                </div>
+                            </label>
+                            <label class="co-pay-item">
+                                <input type="radio" name="pembayaran" value="bca" onchange="hitungTotal()">
+                                <div class="co-pay-content">
+                                    <span class="pay-icon bca-icon">BCA</span>
+                                    <span>BCA Virtual Account</span>
+                                </div>
+                            </label>
+                            <label class="co-pay-item">
+                                <input type="radio" name="pembayaran" value="mandiri" onchange="hitungTotal()">
+                                <div class="co-pay-content">
+                                    <span class="pay-icon mandiri-icon">MDR</span>
+                                    <span>Mandiri Virtual Account</span>
+                                </div>
+                            </label>
+                            <label class="co-pay-item">
+                                <input type="radio" name="pembayaran" value="cod" onchange="hitungTotal()">
+                                <div class="co-pay-content">
+                                    <span class="pay-icon cod-icon"><i class="fas fa-money-bill-wave"></i></span>
+                                    <span>Bayar di Tempat (COD)</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="checkout-section">
+                        <div class="checkout-section-title"><i class="fas fa-tag"></i> Kode Promo</div>
+                        <div class="co-promo-row">
+                            <input type="text" id="co-promo" class="co-input co-promo-input" placeholder="Masukkan kode promo...">
+                            <button class="btn-pakai-promo" onclick="pakaiPromo()">Pakai</button>
+                        </div>
+                        <div id="co-promo-info" style="font-size:12px; margin-top:6px;"></div>
+                    </div>
+                    <div class="checkout-section co-ringkasan">
+                        <div class="checkout-section-title"><i class="fas fa-receipt"></i> Ringkasan Transaksi</div>
+                        <div class="ringkasan-baris"><span>Subtotal Produk</span><span id="co-subtotal">Rp 0</span></div>
+                        <div class="ringkasan-baris"><span>Ongkos Kirim</span><span id="co-ongkir">Rp 15.000</span></div>
+                        <div class="ringkasan-baris diskon-baris" id="baris-diskon" style="display:none;"><span>Diskon Promo</span><span id="co-diskon" style="color:#10b981;">- Rp 0</span></div>
+                        <div class="ringkasan-baris ringkasan-total"><span>Total Tagihan</span><span id="co-total-bayar">Rp 0</span></div>
+                    </div>
+                    <button class="btn-bayar-sekarang" onclick="konfirmasiBayar()">
+                        <i class="fas fa-shield-alt"></i> Bayar Sekarang
+                    </button>
+                    <p class="co-tos">Dengan melanjutkan, Anda menyetujui <a href="#">Syarat & Ketentuan</a> TrustMarket.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL SUKSES PEMBAYARAN ===== -->
+    <div id="modal-sukses-bayar" class="modal-overlay">
+        <div class="modal-box modal-sukses-box">
+            <div class="sukses-icon"><i class="fas fa-check-circle"></i></div>
+            <h3 class="sukses-title">Pembayaran Berhasil!</h3>
+            <p class="sukses-sub" id="sukses-metode-text">Pesanan Anda sedang diproses.</p>
+            <div class="sukses-detail" id="sukses-detail-list"></div>
+            <button class="btn-bayar-sekarang" style="margin-top:20px;" onclick="selesaiBayar()">
+                <i class="fas fa-check"></i> Lihat Riwayat Transaksi
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
