@@ -1,7 +1,50 @@
 services:
+
+  # ── PostgreSQL Database ──────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: trustmarket_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: trustmarket
+      POSTGRES_USER: trustmarket
+      POSTGRES_PASSWORD: trustmarket_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U trustmarket" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Node.js Backend API ──────────────────────────────────────
+  api:
+    build: ./backend
+    container_name: trustmarket_api
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: trustmarket
+      DB_USER: trustmarket
+      DB_PASSWORD: trustmarket_secret
+      PORT: 3001
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Nginx Static Frontend ────────────────────────────────────
   web:
     build: .
     container_name: trustmarket_static_web
     restart: unless-stopped
     ports:
       - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

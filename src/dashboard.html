@@ -59,40 +59,13 @@
                                 <span><i class="fas fa-clock"></i> Aktivitas Terbaru</span>
                                 <a href="#" onclick="showMenu(event,'laporan')" class="admin-panel-link">Lihat Semua</a>
                             </div>
-                            <div class="admin-activity-list">
-                                <div class="admin-activity-item">
-                                    <span class="activity-dot dot-green"></span>
-                                    <div class="activity-info">
-                                        <span class="activity-text">Login berhasil oleh <strong>Budi Santoso</strong></span>
-                                        <span class="activity-time">2 menit lalu</span>
-                                    </div>
-                                </div>
+                            <div class="admin-activity-list" id="admin-activity-list">
+                                <!-- Aktivitas terbaru dimuat dari database via API -->
                                 <div class="admin-activity-item">
                                     <span class="activity-dot dot-blue"></span>
                                     <div class="activity-info">
-                                        <span class="activity-text">Pengguna baru didaftarkan: <strong>Siti Rahayu</strong></span>
-                                        <span class="activity-time">15 menit lalu</span>
-                                    </div>
-                                </div>
-                                <div class="admin-activity-item">
-                                    <span class="activity-dot dot-orange"></span>
-                                    <div class="activity-info">
-                                        <span class="activity-text">Produk dihapus oleh <strong>Seller A</strong></span>
-                                        <span class="activity-time">1 jam lalu</span>
-                                    </div>
-                                </div>
-                                <div class="admin-activity-item">
-                                    <span class="activity-dot dot-red"></span>
-                                    <div class="activity-info">
-                                        <span class="activity-text">Login gagal (IP: 192.168.1.25)</span>
-                                        <span class="activity-time">2 jam lalu</span>
-                                    </div>
-                                </div>
-                                <div class="admin-activity-item">
-                                    <span class="activity-dot dot-green"></span>
-                                    <div class="activity-info">
-                                        <span class="activity-text">Transaksi berhasil oleh <strong>Ahmad Fauzi</strong></span>
-                                        <span class="activity-time">3 jam lalu</span>
+                                        <span class="activity-text">Memuat aktivitas...</span>
+                                        <span class="activity-time">—</span>
                                     </div>
                                 </div>
                             </div>
@@ -181,7 +154,7 @@
                 
                 <div class="catalog-grid">
                     <div class="product-card">
-                        <div class="product-icon"><i class="fas fa-shoe-prints"></i></div>
+                        <div class="product-icon" onclick="openProductDetail('Sepatu Kets Retro', 250000)"> <i class="fas fa-shoe-prints"></i></div>
                         <div class="product-title">Sepatu Kets Retro</div>
                         <div class="product-price">Rp 250.000</div>
                         <div class="qty-control">
@@ -189,11 +162,10 @@
                             <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
                             <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
                         </div>
-                        <button class="btn-buy" onclick="tambahKeranjang('Sepatu Kets Retro', 250000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
                     </div>
                     
                     <div class="product-card">
-                        <div class="product-icon"><i class="fas fa-tshirt"></i></div>
+                        <div class="product-icon" onclick="openProductDetail('Kemeja Flanel Original', 150000)"> <i class="fas fa-tshirt"></i></div>
                         <div class="product-title">Kemeja Flanel Original</div>
                         <div class="product-price">Rp 150.000</div>
                         <div class="qty-control">
@@ -201,11 +173,10 @@
                             <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
                             <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
                         </div>
-                        <button class="btn-buy" onclick="tambahKeranjang('Kemeja Flanel Original', 150000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
                     </div>
 
                     <div class="product-card">
-                        <div class="product-icon"><i class="fas fa-glasses"></i></div>
+                        <div class="product-icon" onclick="openProductDetail('Kacamata Hitam Y2K', 120000)"> <i class="fas fa-glasses"></i></div>
                         <div class="product-title">Kacamata Hitam Y2K</div>
                         <div class="product-price">Rp 120.000</div>
                         <div class="qty-control">
@@ -213,11 +184,10 @@
                             <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
                             <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
                         </div>
-                        <button class="btn-buy" onclick="tambahKeranjang('Kacamata Hitam Y2K', 120000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
                     </div>
 
                     <div class="product-card">
-                        <div class="product-icon"><i class="fas fa-headphones"></i></div>
+                        <div class="product-icon" onclick="openProductDetail('Headphone Wireless', 450000)"> <i class="fas fa-headphones"></i></div>    
                         <div class="product-title">Headphone Wireless</div>
                         <div class="product-price">Rp 450.000</div>
                         <div class="qty-control">
@@ -225,7 +195,6 @@
                             <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
                             <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
                         </div>
-                        <button class="btn-buy" onclick="tambahKeranjang('Headphone Wireless', 450000, this)"><i class="fas fa-cart-plus"></i> Tambah ke Keranjang</button>
                     </div>
                 </div>
 
@@ -290,34 +259,7 @@
                     <table id="tabel-produk">
                         <thead><tr><th>ID</th><th>Nama Produk</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td>PRD-001</td><td>Sepatu Kets Retro</td><td>Rp 250.000</td><td>45</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>PRD-002</td><td>Kemeja Flanel Original</td><td>Rp 150.000</td><td>8</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>PRD-003</td><td>Kacamata Hitam Y2K</td><td>Rp 120.000</td><td>16</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>PRD-004</td><td>Headphone Wireless</td><td>Rp 450.000</td><td>6</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
+                            <!-- Data produk dimuat dari database via API -->
                         </tbody>
                     </table>
                 </div>
@@ -387,56 +329,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>USR-001</td><td>Budi Santoso</td><td>budi@example.com</td>
-                                <td><span class="role-badge role-user">User</span></td>
-                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
-                                <td>2025-01-10</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>USR-002</td><td>Siti Rahayu</td><td>siti.r@gmail.com</td>
-                                <td><span class="role-badge role-seller">Seller</span></td>
-                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
-                                <td>2025-02-14</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>USR-003</td><td>Ahmad Fauzi</td><td>ahmad.f@mail.co</td>
-                                <td><span class="role-badge role-admin">Admin</span></td>
-                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
-                                <td>2024-11-03</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>USR-004</td><td>Dewi Lestari</td><td>dewi.ls@yahoo.com</td>
-                                <td><span class="role-badge role-user">User</span></td>
-                                <td><span class="user-status-badge status-nonaktif"><i class="fas fa-circle"></i> Nonaktif</span></td>
-                                <td>2025-03-22</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>USR-005</td><td>Rizky Maulana</td><td>rizky.m@store.id</td>
-                                <td><span class="role-badge role-seller">Seller</span></td>
-                                <td><span class="user-status-badge status-aktif"><i class="fas fa-circle"></i> Aktif</span></td>
-                                <td>2025-04-01</td>
-                                <td>
-                                    <a class="action-link edit" onclick="bukaModalUser(this)"><i class="fas fa-edit"></i> Edit</a>
-                                    <a class="action-link delete" onclick="hapusBaris(this)"><i class="fas fa-trash"></i> Hapus</a>
-                                </td>
-                            </tr>
+                            <!-- Data pengguna dimuat dari database via API -->
                         </tbody>
                     </table>
                 </div>
@@ -499,72 +392,7 @@
                             </tr>
                         </thead>
                         <tbody id="log-tbody">
-                            <tr data-type="Login" data-severity="SUCCESS">
-                                <td class="log-time">2026-04-13 10:00</td>
-                                <td><span class="log-type-badge type-login">Login</span></td>
-                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
-                                <td>Login berhasil</td><td>Budi Santoso (User)</td><td class="log-ip">192.168.1.10</td>
-                            </tr>
-                            <tr data-type="Transaksi" data-severity="SUCCESS">
-                                <td class="log-time">2026-04-13 10:12</td>
-                                <td><span class="log-type-badge type-transaksi">Transaksi</span></td>
-                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
-                                <td>Checkout berhasil — TRX-0042</td><td>Budi Santoso (User)</td><td class="log-ip">192.168.1.10</td>
-                            </tr>
-                            <tr data-type="Login" data-severity="ERROR">
-                                <td class="log-time">2026-04-13 10:35</td>
-                                <td><span class="log-type-badge type-login">Login</span></td>
-                                <td><span class="log-level-badge level-error">ERROR</span></td>
-                                <td>Login gagal (kata sandi salah)</td><td>Unknown (—)</td><td class="log-ip">192.168.1.25</td>
-                            </tr>
-                            <tr data-type="Pengguna" data-severity="INFO">
-                                <td class="log-time">2026-04-13 10:48</td>
-                                <td><span class="log-type-badge type-pengguna">Pengguna</span></td>
-                                <td><span class="log-level-badge level-info">INFO</span></td>
-                                <td>Pengguna baru didaftarkan</td><td>Administrator (Admin)</td><td class="log-ip">127.0.0.1</td>
-                            </tr>
-                            <tr data-type="Produk" data-severity="INFO">
-                                <td class="log-time">2026-04-13 11:05</td>
-                                <td><span class="log-type-badge type-produk">Produk</span></td>
-                                <td><span class="log-level-badge level-info">INFO</span></td>
-                                <td>Produk PRD-003 diperbarui</td><td>Siti Rahayu (Seller)</td><td class="log-ip">192.168.1.18</td>
-                            </tr>
-                            <tr data-type="Keamanan" data-severity="WARNING">
-                                <td class="log-time">2026-04-13 11:22</td>
-                                <td><span class="log-type-badge type-keamanan">Keamanan</span></td>
-                                <td><span class="log-level-badge level-warning">WARNING</span></td>
-                                <td>Percobaan akses halaman admin tanpa izin</td><td>Unknown (—)</td><td class="log-ip">10.0.0.99</td>
-                            </tr>
-                            <tr data-type="Login" data-severity="SUCCESS">
-                                <td class="log-time">2026-04-13 11:45</td>
-                                <td><span class="log-type-badge type-login">Login</span></td>
-                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
-                                <td>Login berhasil</td><td>Rizky Maulana (Seller)</td><td class="log-ip">192.168.1.30</td>
-                            </tr>
-                            <tr data-type="Transaksi" data-severity="SUCCESS">
-                                <td class="log-time">2026-04-13 12:00</td>
-                                <td><span class="log-type-badge type-transaksi">Transaksi</span></td>
-                                <td><span class="log-level-badge level-success">SUCCESS</span></td>
-                                <td>Pembayaran dikonfirmasi — TRX-0043</td><td>Ahmad Fauzi (Admin)</td><td class="log-ip">127.0.0.1</td>
-                            </tr>
-                            <tr data-type="Pengguna" data-severity="WARNING">
-                                <td class="log-time">2026-04-13 12:30</td>
-                                <td><span class="log-type-badge type-pengguna">Pengguna</span></td>
-                                <td><span class="log-level-badge level-warning">WARNING</span></td>
-                                <td>Akun USR-004 dinonaktifkan oleh admin</td><td>Ahmad Fauzi (Admin)</td><td class="log-ip">127.0.0.1</td>
-                            </tr>
-                            <tr data-type="Produk" data-severity="WARNING">
-                                <td class="log-time">2026-04-13 13:05</td>
-                                <td><span class="log-type-badge type-produk">Produk</span></td>
-                                <td><span class="log-level-badge level-warning">WARNING</span></td>
-                                <td>Stok produk PRD-004 kritis (sisa 6)</td><td>Sistem Otomatis</td><td class="log-ip">—</td>
-                            </tr>
-                            <tr data-type="Keamanan" data-severity="ERROR">
-                                <td class="log-time">2026-04-13 13:40</td>
-                                <td><span class="log-type-badge type-keamanan">Keamanan</span></td>
-                                <td><span class="log-level-badge level-error">ERROR</span></td>
-                                <td>Percobaan brute-force terdeteksi (5x gagal)</td><td>Unknown (—)</td><td class="log-ip">10.0.0.99</td>
-                            </tr>
+                            <!-- Log aktivitas dimuat dari database via API -->
                         </tbody>
                     </table>
                 </div>
@@ -644,14 +472,14 @@
                                 <input type="radio" name="pengiriman" value="reguler" checked onchange="hitungTotal()">
                                 <div class="co-option-content">
                                     <span class="co-option-label">Reguler</span>
-                                    <span class="co-option-price">Rp 15.000 &nbsp;Â·&nbsp; Estimasi 3â€“5 Hari</span>
+                                    <span class="co-option-price">Rp 15.000 · Estimasi 3–5 Hari</span>
                                 </div>
                             </label>
                             <label class="co-option-item">
                                 <input type="radio" name="pengiriman" value="express" onchange="hitungTotal()">
                                 <div class="co-option-content">
                                     <span class="co-option-label">Express</span>
-                                    <span class="co-option-price">Rp 25.000 &nbsp;Â·&nbsp; Estimasi 1â€“2 Hari</span>
+                                    <span class="co-option-price">Rp 25.000 · Estimasi 1–2 Hari</span>
                                 </div>
                             </label>
                             <label class="co-option-item">
@@ -746,6 +574,32 @@
             </button>
         </div>
     </div>
+
+    <div class="modal-overlay" id="product-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-title">Detail Produk</h3>
+            <button class="close-btn" onclick="closeModal('product-modal')">&times;</button>
+        </div>
+
+        <div style="text-align:center; margin-bottom:15px;">
+            <i id="modal-icon" class="fas fa-box" style="font-size:50px; color:#3b82f6;"></i>
+        </div>
+
+        <p id="modal-desc">Deskripsi produk</p>
+        <p><strong>Stok:</strong> <span id="modal-stock">0</span></p>
+
+        <div class="qty-control">
+            <button class="qty-btn" onclick="ubahQtyModal(-1)">-</button>
+            <input type="number" id="modal-qty" value="1" min="1">
+            <button class="qty-btn" onclick="ubahQtyModal(1)">+</button>
+        </div>
+
+        <button class="btn-buy" id="modal-add-btn">
+            <i class="fas fa-cart-plus"></i> Tambah ke Keranjang
+        </button>
+    </div>
+</div>
 
     <script src="script.js"></script>
 

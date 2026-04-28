@@ -166,6 +166,12 @@ tr:hover td { background-color: #f8fafc; }
 .table-empty-state span {
     font-size: 13px;
 }
+.product-card .qty-control {
+    display: none;
+}
+.product-card {
+    cursor: pointer;
+}
 
 /* --- Modal Pop-up --- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(3px); }
@@ -198,6 +204,7 @@ tr:hover td { background-color: #f8fafc; }
     color: #1f2937;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: textfield;
     -moz-appearance: textfield;
 }
 .qty-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
