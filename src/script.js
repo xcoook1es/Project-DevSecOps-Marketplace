@@ -2,7 +2,7 @@
 // TrustMarket — Dashboard Script
 // Data diambil dari REST API (/api/*) dan disimpan ke PostgreSQL
 // ============================================================
-
+let productsDB = [];
 const API_BASE       = '/api';
 const ACTIVE_ROLE_KEY = 'TrustMarket_active_role';
 const ACTIVE_USER_KEY = 'TrustMarket_active_user';
@@ -239,6 +239,7 @@ async function loadProducts() {
 
     const tbody = document.querySelector('#tabel-produk tbody');
     tbody.innerHTML = '';
+    productsDB = products;
 
     products.forEach(p => {
         const hargaRupiah = formatRupiah(p.harga).replace(',00','');
@@ -259,6 +260,58 @@ async function loadProducts() {
 
     updateSellerProductSummary();
     updateDashboardStats();
+}
+
+function getProductFromDB(nama) {
+    return productsDB.find(p => p.nama === nama);
+}
+function renderCatalog() {
+    const container = document.getElementById('catalog-container');
+    if (!container) return;
+
+    // 🔥 CEK KOSONG DI AWAL
+    if (productsDB.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-box-open"></i>
+                <p>Belum ada produk tersedia</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+
+    productsDB.forEach(p => {
+        container.innerHTML += `
+        <div class="product-card">
+            <div class="product-icon" onclick="openProductDetail('${p.nama}', ${p.harga})">
+            ${p.gambar 
+                ? `<img src="/uploads/${p.gambar}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`
+                : `<i class="fas fa-box"></i>`
+            }
+        </div>
+
+            <div class="product-title">${p.nama}</div>
+            <div class="product-price">${formatRupiah(p.harga)}</div>
+
+            <!-- 🔥 TAMBAH INI (BIAR UX BAGUS) -->
+            <div class="product-stock">Stok: ${p.stok}</div>
+
+            <div class="qty-control">
+                <button class="qty-btn" onclick="ubahQty(this, -1)">-</button>
+                <input type="number" class="qty-value qty-input" value="1" min="1">
+                <button class="qty-btn" onclick="ubahQty(this, 1)">+</button>
+            </div>
+
+            <button 
+                class="btn-add-cart"
+                ${p.stok <= 0 ? 'disabled style="background:#9ca3af"' : ''}
+                onclick="tambahKeranjang('${p.nama}', ${p.harga}, this)"
+            >
+                ${p.stok <= 0 ? 'Stok Habis' : '<i class="fas fa-cart-plus"></i> Tambah'}
+            </button>
+        </div>`;
+    });
 }
 
 async function loadTransactions() {
@@ -392,6 +445,9 @@ function hapusBaris(elemen) {
         updateTransactionEmptyState();
     }
 }
+function saveKeranjang() {
+    localStorage.setItem('keranjang', JSON.stringify(keranjang));
+}
 
 // ── Hapus produk ──────────────────────────────────────────────
 async function hapusBarisProduk(elemen) {
@@ -454,81 +510,69 @@ async function hapusBarisPengguna(elemen) {
 // ============================================================
 // SISTEM KERANJANG
 // ============================================================
-let keranjang = [];
-const productMeta = {
-    'Sepatu Kets Retro': {
-        icon: 'fas fa-shoe-prints',
-        varian: 'Retro Matte Silver',
-        stok: 12,
-        deskripsi: 'Sepatu retro dengan desain klasik dan nyaman dipakai sehari-hari',
-        diskon: '32%',
-        hargaAwal: 370000
-    },
-    'Kemeja Flanel Original': {
-        icon: 'fas fa-tshirt',
-        varian: 'Flanel Red Black',
-        stok: 8,
-        deskripsi: 'Kemeja flanel premium dengan bahan lembut dan stylish',
-        diskon: '28%',
-        hargaAwal: 210000
-    },
-    'Kacamata Hitam Y2K': {
-        icon: 'fas fa-glasses',
-        varian: 'Y2K Black Glossy',
-        stok: 5,
-        deskripsi: 'Kacamata gaya Y2K dengan perlindungan UV',
-        diskon: '25%',
-        hargaAwal: 160000
-    },
-    'Headphone Wireless': {
-        icon: 'fas fa-headphones',
-        varian: 'Wireless Midnight',
-        stok: 3,
-        deskripsi: 'Headphone wireless dengan suara jernih dan bass kuat',
-        diskon: '18%',
-        hargaAwal: 550000
-    }
-};
-
-function getProductMeta(nama) {
-    return productMeta[nama] || { icon: 'fas fa-box', varian: 'Produk TrustMarket', stok: 10, diskon: '10%', hargaAwal: null };
-}
+let keranjang = JSON.parse(localStorage.getItem('keranjang')) || [];
 
 function updateCartBadge() {
     const badge = document.getElementById('cart-count');
 
     badge.innerText = keranjang
-        .reduce((t, i) => t + i.qty, 0);
+    .filter(i => !i.isCheckout)
+    .reduce((t, i) => t + i.qty, 0);
 }
 
 function ubahQty(tombol, delta) {
-    const qtyEl = tombol.closest('.qty-control').querySelector('.qty-value');
-    let qty = parseInt(qtyEl.value !== undefined ? qtyEl.value : qtyEl.innerText) + delta;
+    const qtyEl = tombol.closest('.qty-control').querySelector('.qty-input');
+    let qty = parseInt(qtyEl.value) || 1;
+    qty += delta;
     if (qty < 1) qty = 1;
-    if (qtyEl.value !== undefined && qtyEl.tagName === 'INPUT') qtyEl.value = qty;
-    else qtyEl.innerText = qty;
+    qtyEl.value = qty;
 }
 
 function tambahKeranjang(nama, harga, tombol) {
-    const qtyEl  = tombol.closest('.product-card').querySelector('.qty-value');
-    const qty    = parseInt(qtyEl.value !== undefined && qtyEl.tagName === 'INPUT' ? qtyEl.value : qtyEl.innerText);
-    const existing = keranjang.find(item => item.nama === nama);
-    if (existing) { existing.qty += qty; existing.selected = true; }
-    else {
-        const meta = getProductMeta(nama);
-        keranjang.push({ nama, harga, qty, selected: true, favorit: false, varian: meta.varian, stok: meta.stok, diskon: meta.diskon, hargaAwal: meta.hargaAwal, icon: meta.icon });
+    const card = tombol.closest('.product-card');
+    const qtyEl = card.querySelector('.qty-input');
+
+    let qty = parseInt(qtyEl.value);
+    if (!qty || qty < 1) qty = 1; 
+
+    const product = getProductFromDB(nama);
+
+    if (!product || qty > product.stok) {
+        alert('Stok tidak cukup!');
+        return;
     }
+    const existing = keranjang.find(item => item.nama === nama);
+
+    if (existing) {
+        existing.qty += qty;
+        existing.selected = true;
+    } else {
+        keranjang.push({
+            nama,
+            harga,
+            qty,
+            selected: true,
+            favorit: false
+        });
+    }
+
     renderKeranjang();
+    saveKeranjang();
+
     tombol.innerHTML = '<i class="fas fa-check"></i> Ditambahkan!';
     tombol.style.background = '#059669';
-    setTimeout(() => { tombol.innerHTML = '<i class="fas fa-cart-plus"></i> Tambah ke Keranjang'; tombol.style.background = ''; }, 1500);
+
+    setTimeout(() => {
+        tombol.innerHTML = '<i class="fas fa-cart-plus"></i> Tambah';
+        tombol.style.background = '';
+    }, 1500);
 }
 
-function hapusKeranjang(index) { keranjang.splice(index, 1); renderKeranjang(); }
-function ubahQtyKeranjang(index, delta) { keranjang[index].qty += delta; if (keranjang[index].qty < 1) keranjang[index].qty = 1; renderKeranjang(); }
-function setPilihItem(index, checked) { keranjang[index].selected = checked; renderKeranjang(); }
-function togglePilihSemua(checked) { keranjang.forEach(item => item.selected = checked); renderKeranjang(); }
-function toggleFavorit(index) { keranjang[index].favorit = !keranjang[index].favorit; renderKeranjang(); }
+function hapusKeranjang(index) { keranjang.splice(index, 1);saveKeranjang(); renderKeranjang(); }
+function ubahQtyKeranjang(index, delta) { keranjang[index].qty += delta; if (keranjang[index].qty < 1) keranjang[index].qty = 1; saveKeranjang(); renderKeranjang(); }
+function setPilihItem(index, checked) { keranjang[index].selected = checked; saveKeranjang(); renderKeranjang(); }
+function togglePilihSemua(checked) { keranjang.forEach(item => item.selected = checked);saveKeranjang(); renderKeranjang(); }
+function toggleFavorit(index) { keranjang[index].favorit = !keranjang[index].favorit;saveKeranjang(); renderKeranjang(); }
 
 function renderKeranjang() {
     const emptyState  = document.getElementById('cart-empty-state');
@@ -561,19 +605,22 @@ function renderKeranjang() {
     emptyState.style.display = 'none'; shopSection.style.display = 'block';
 
     keranjang.forEach((item, i) => {
-        const meta       = getProductMeta(item.nama);
-        const hargaAwal  = item.hargaAwal || meta.hargaAwal;
-        const diskon     = item.diskon || meta.diskon;
-        const varian     = item.varian || meta.varian;
-        const stok       = item.stok || meta.stok;
-        const icon       = item.icon || meta.icon;
+        const product = getProductFromDB(item.nama);
+        const hargaAwal = product?.hargaAwal || null;
+        const diskon = product?.diskon || '';
+        const varian = product?.varian || '';
+        const icon = product?.icon || 'fas fa-box';
+        const stok = product?.stok || 0;
 
         itemsList.innerHTML += `
             <div class="cart-item-row">
                 <input class="cart-checkbox" type="checkbox" ${item.selected ? 'checked' : ''} onchange="setPilihItem(${i}, this.checked)">
                 <div class="cart-product-thumb">
                     <span class="cart-discount-badge">${diskon}</span>
-                    <i class="${icon}"></i>
+                    ${product?.gambar 
+                        ? `<img src="/uploads/${product.gambar}" style="width:50px; height:50px; object-fit:cover;">`
+                        : `<i class="${icon}"></i>`
+                    }
                 </div>
                 <div class="cart-product-info">
                     <div class="cart-stock">Sisa ${stok}</div>
@@ -623,8 +670,8 @@ function checkoutSelected() {
 
     // 🔴 CEK STOK DULU
     for (let item of selectedItems) {
-        const meta = productMeta[item.nama];
-        if (item.qty > meta.stok) {
+        const product = getProductFromDB(item.nama);
+        if (!product || item.qty > product.stok) {
             alert(`Stok ${item.nama} tidak mencukupi!`);
             return;
         }
@@ -789,6 +836,7 @@ async function konfirmasiBayar() {
     closeModal('modal-checkout');
     await loadProducts();
     keranjang = keranjang.filter(item => !item.isCheckout);
+    saveKeranjang();
     pendingCheckoutItems = [];
 
     renderKeranjang();
@@ -879,10 +927,23 @@ document.getElementById('form-produk').addEventListener('submit', async function
         }
     } else {
         // INSERT
-        const newProduct = await apiFetch('/products', {
+        const formData = new FormData();
+        formData.append('nama', nama);
+        formData.append('harga', harga);
+        formData.append('stok', stok);
+
+        const fileInput = document.getElementById('input-gambar-produk');
+        if (fileInput.files[0]) {
+            formData.append('gambar', fileInput.files[0]);
+        }
+
+        const res = await fetch('/products', {
             method: 'POST',
-            body: JSON.stringify({ nama, harga: parseInt(harga), stok: parseInt(stok) })
+            body: formData
         });
+
+        const newProduct = await res.json();
+
         if (newProduct && newProduct.product_id) {
             const tr = document.createElement('tr');
             tr.dataset.productId = newProduct.product_id;
@@ -1122,19 +1183,24 @@ function refreshLog() {
 // MODAL DETAIL PRODUK
 // ===============================
 function openProductDetail(nama, harga) {
-    const meta = productMeta[nama];
+    const product = getProductFromDB(nama);
 
     document.getElementById('modal-title').innerText = nama;
-    document.getElementById('modal-desc').innerText = meta.deskripsi;
-    document.getElementById('modal-stock').innerText = meta.stok;
-    document.getElementById('modal-icon').className = meta.icon;
+    document.getElementById('modal-desc').innerText = product?.deskripsi || 'Produk berkualitas';
+    document.getElementById('modal-stock').innerText = product?.stok || 0;
+    const iconEl = document.getElementById('modal-icon');
+    if (product?.gambar) {
+        iconEl.innerHTML = `<img src="/uploads/${product.gambar}" style="width:100px; height:100px; object-fit:cover;">`;
+    } else {
+        iconEl.innerHTML = `<i class="${product?.icon || 'fas fa-box'}"></i>`;
+    }
 
     document.getElementById('modal-qty').value = 1;
 
     const btn = document.getElementById('modal-add-btn');
 
     // 🟢 CEK STOK (INI YANG KAMU TANYA TARUH DIMANA)
-    if (meta.stok <= 0) {
+    if (!product || product.stok <= 0) {
         btn.disabled = true;
         btn.innerText = 'Stok Habis';
         btn.style.background = '#9ca3af';
@@ -1148,7 +1214,7 @@ function openProductDetail(nama, harga) {
     btn.onclick = function() {
         const qty = parseInt(document.getElementById('modal-qty').value) || 1;
 
-        if (qty > meta.stok) {
+        if (qty > product.stok) {
             alert('Stok tidak cukup!');
             return;
         }
@@ -1164,15 +1230,11 @@ function openProductDetail(nama, harga) {
             harga,
             qty,
             selected: true,
-            favorit: false,
-            varian: meta.varian,
-            stok: meta.stok,
-            diskon: meta.diskon,
-            hargaAwal: meta.hargaAwal,
-            icon: meta.icon
+            favorit: false
         });
         }
 
+        saveKeranjang();
         renderKeranjang();
         updateCartBadge();
         closeModal('product-modal');
@@ -1206,6 +1268,11 @@ window.onload = async () => {
         loadUsers(),
         loadLogs(),
     ]);
+
+    renderCatalog();
+
+    keranjang = JSON.parse(localStorage.getItem('keranjang')) || [];
+    renderKeranjang();
 
     updateDashboardStats();
     filterTabelUser();

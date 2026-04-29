@@ -138,13 +138,6 @@
                             <p>Produk dengan stok di bawah 10 unit.</p>
                         </div>
                     </div>
-                    <div class="seller-insight-card">
-                        <span class="seller-insight-icon bg-green-soft"><i class="fas fa-chart-line"></i></span>
-                        <div>
-                            <strong id="seller-top-product">Belum ada produk terlaris</strong>
-                            <p>Dipakai sebagai fokus promosi toko.</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -152,51 +145,7 @@
                 <h3 class="section-title"><i class="fas fa-store"></i> Katalog Belanja (D2)</h3>
                 <p>Silakan pilih dan pesan barang yang Anda inginkan.</p>
                 
-                <div class="catalog-grid">
-                    <div class="product-card">
-                        <div class="product-icon" onclick="openProductDetail('Sepatu Kets Retro', 250000)"> <i class="fas fa-shoe-prints"></i></div>
-                        <div class="product-title">Sepatu Kets Retro</div>
-                        <div class="product-price">Rp 250.000</div>
-                        <div class="qty-control">
-                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
-                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-                    
-                    <div class="product-card">
-                        <div class="product-icon" onclick="openProductDetail('Kemeja Flanel Original', 150000)"> <i class="fas fa-tshirt"></i></div>
-                        <div class="product-title">Kemeja Flanel Original</div>
-                        <div class="product-price">Rp 150.000</div>
-                        <div class="qty-control">
-                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
-                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="product-card">
-                        <div class="product-icon" onclick="openProductDetail('Kacamata Hitam Y2K', 120000)"> <i class="fas fa-glasses"></i></div>
-                        <div class="product-title">Kacamata Hitam Y2K</div>
-                        <div class="product-price">Rp 120.000</div>
-                        <div class="qty-control">
-                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
-                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="product-card">
-                        <div class="product-icon" onclick="openProductDetail('Headphone Wireless', 450000)"> <i class="fas fa-headphones"></i></div>    
-                        <div class="product-title">Headphone Wireless</div>
-                        <div class="product-price">Rp 450.000</div>
-                        <div class="qty-control">
-                            <button class="qty-btn" onclick="ubahQty(this, -1)"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-value qty-input" value="1" min="1" oninput="if(this.value<1||this.value==='')this.value=1">
-                            <button class="qty-btn" onclick="ubahQty(this, 1)"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-                </div>
+            <div class="catalog-grid" id="catalog-container"></div>
 
             </div>
 
@@ -414,6 +363,7 @@
                 <div class="form-group"><label>Nama Produk</label><input type="text" id="input-nama-produk" class="form-control" required></div>
                 <div class="form-group"><label>Harga (Rp)</label><input type="number" id="input-harga-produk" class="form-control" required></div>
                 <div class="form-group"><label>Stok Awal</label><input type="number" id="input-stok-produk" class="form-control" required></div>
+                <div class="form-group"><label>Gambar Produk</label><input type="file" id="input-gambar-produk" accept="image/*"></div>
                 <button type="submit" class="action-btn" style="width: 100%; justify-content: center; margin-top: 10px;"><i class="fas fa-save"></i> <span id="btn-text-produk">Simpan Data Produk</span></button>
             </form>
         </div>
@@ -486,7 +436,7 @@
                                 <input type="radio" name="pengiriman" value="same_day" onchange="hitungTotal()">
                                 <div class="co-option-content">
                                     <span class="co-option-label">Same Day</span>
-                                    <span class="co-option-price">Rp 35.000 &nbsp;Â·&nbsp; Tiba Hari Ini</span>
+                                    <span class="co-option-price">Rp 35.000 · Tiba Hari Ini</span>
                                 </div>
                             </label>
                         </div>
