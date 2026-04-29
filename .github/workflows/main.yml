@@ -69,21 +69,24 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set lowercase repository name
+      run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
     # Langkah 3: Build & Push image Frontend (Nginx)
     - name: Build and Push Frontend Image
       run: |
-        docker build -t ghcr.io/${{ github.repository }}/web:latest \
-                      -t ghcr.io/${{ github.repository }}/web:${{ github.sha }} .
-        docker push ghcr.io/${{ github.repository }}/web:latest
-        docker push ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+        docker build -t ghcr.io/${{ env.REPO_LC }}/web:latest \
+                      -t ghcr.io/${{ env.REPO_LC }}/web:${{ github.sha }} .
+        docker push ghcr.io/${{ env.REPO_LC }}/web:latest
+        docker push ghcr.io/${{ env.REPO_LC }}/web:${{ github.sha }}
 
     # Langkah 4: Build & Push image Backend (Node.js API)
     - name: Build and Push Backend Image
       run: |
-        docker build -t ghcr.io/${{ github.repository }}/api:latest \
-                      -t ghcr.io/${{ github.repository }}/api:${{ github.sha }} ./backend
-        docker push ghcr.io/${{ github.repository }}/api:latest
-        docker push ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+        docker build -t ghcr.io/${{ env.REPO_LC }}/api:latest \
+                      -t ghcr.io/${{ env.REPO_LC }}/api:${{ github.sha }} ./backend
+        docker push ghcr.io/${{ env.REPO_LC }}/api:latest
+        docker push ghcr.io/${{ env.REPO_LC }}/api:${{ github.sha }}
 
     # Langkah 5: Ringkasan Deployment
     - name: Deployment Summary
@@ -91,7 +94,7 @@ jobs:
         echo "✅ Deployment berhasil!"
         echo ""
         echo "📦 Images yang di-deploy:"
-        echo "   Frontend: ghcr.io/${{ github.repository }}/web:latest"
-        echo "   Backend:  ghcr.io/${{ github.repository }}/api:latest"
+        echo "   Frontend: ghcr.io/${{ env.REPO_LC }}/web:latest"
+        echo "   Backend:  ghcr.io/${{ env.REPO_LC }}/api:latest"
         echo ""
         echo "🏷️  Tag commit: ${{ github.sha }}"
