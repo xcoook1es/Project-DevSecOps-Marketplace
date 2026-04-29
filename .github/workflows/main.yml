@@ -7,20 +7,29 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Permission untuk push image ke GitHub Container Registry (GHCR)
+permissions:
+  contents: read
+  packages: write
+
 jobs:
+
+  # ══════════════════════════════════════════════════════════════
+  # CI — Build & Security Check
+  # ══════════════════════════════════════════════════════════════
   build-and-security-check:
     runs-on: ubuntu-latest
 
     steps:
     # Langkah 1: Mengambil source code dari repositori GitHub
     - name: Checkout Source Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Langkah 2: Menyiapkan environment Node.js
-    - name: Setup Node.js 18
-      uses: actions/setup-node@v3
+    - name: Setup Node.js 20
+      uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
 
     # Langkah 3: Menginstal dependensi aplikasi secara bersih
@@ -38,3 +47,51 @@ jobs:
     # Langkah 6: Menguji Docker Compose (Memastikan Node & DB bisa berjalan bersama)
     - name: Test Docker Compose Build
       run: docker compose up -d --build
+
+  # ══════════════════════════════════════════════════════════════
+  # CD — Deploy Docker Images ke GitHub Container Registry
+  # ══════════════════════════════════════════════════════════════
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-security-check        # Hanya jalan jika CI berhasil
+    if: github.event_name == 'push'        # Hanya deploy saat push, bukan PR
+
+    steps:
+    # Langkah 1: Mengambil source code
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    # Langkah 2: Login ke GitHub Container Registry
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # Langkah 3: Build & Push image Frontend (Nginx)
+    - name: Build and Push Frontend Image
+      run: |
+        docker build -t ghcr.io/${{ github.repository }}/web:latest \
+                      -t ghcr.io/${{ github.repository }}/web:${{ github.sha }} .
+        docker push ghcr.io/${{ github.repository }}/web:latest
+        docker push ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+
+    # Langkah 4: Build & Push image Backend (Node.js API)
+    - name: Build and Push Backend Image
+      run: |
+        docker build -t ghcr.io/${{ github.repository }}/api:latest \
+                      -t ghcr.io/${{ github.repository }}/api:${{ github.sha }} ./backend
+        docker push ghcr.io/${{ github.repository }}/api:latest
+        docker push ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+
+    # Langkah 5: Ringkasan Deployment
+    - name: Deployment Summary
+      run: |
+        echo "✅ Deployment berhasil!"
+        echo ""
+        echo "📦 Images yang di-deploy:"
+        echo "   Frontend: ghcr.io/${{ github.repository }}/web:latest"
+        echo "   Backend:  ghcr.io/${{ github.repository }}/api:latest"
+        echo ""
+        echo "🏷️  Tag commit: ${{ github.sha }}"

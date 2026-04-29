@@ -43,6 +43,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+      - "3443:443"
     depends_on:
       - api
 
