@@ -23,9 +23,15 @@ function getSavedRole() {
 // ── Helper fetch ──────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
     try {
+        const session = getSession();
+        const headers = { 'Content-Type': 'application/json' };
+        if (session.token) {
+            headers['Authorization'] = `Bearer ${session.token}`;
+        }
+        
         const res = await fetch(API_BASE + path, {
-            headers: { 'Content-Type': 'application/json' },
             ...options,
+            headers: { ...headers, ...(options.headers || {}) },
         });
         return await res.json();
     } catch (err) {
@@ -92,6 +98,8 @@ function showMenu(event, menuId) {
     };
     document.getElementById('page-title').innerText = titles[menuId];
     if (menuId === 'dashboard') updateDashboardStats();
+    if (menuId === 'transaksi') loadTransactions();
+    if (menuId === 'laporan') loadLogs();
     updateSellerProductSummary();
     updateTransactionEmptyState();
 }
@@ -114,6 +122,46 @@ function parseRupiah(text) {
 }
 function formatRupiah(angka) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka);
+}
+
+function escapeAttr(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+}
+
+function getProductImageSrc(gambar) {
+    if (!gambar) return '';
+    if (/^(data:image\/|https?:\/\/|\/)/.test(gambar)) return gambar;
+    return `/uploads/${gambar}`;
+}
+
+function productImageHTML(gambar, fallbackIcon = 'fas fa-box', style = '') {
+    const src = getProductImageSrc(gambar);
+    if (src) return `<img src="${escapeAttr(src)}" style="${escapeAttr(style)}">`;
+    return `<i class="${escapeAttr(fallbackIcon)}"></i>`;
+}
+
+function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function getSelectedProductImageDataUrl() {
+    const file = document.getElementById('input-gambar-produk')?.files?.[0];
+    if (!file) return undefined;
+    if (!file.type.startsWith('image/')) {
+        throw new Error('File yang dipilih harus berupa gambar.');
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        throw new Error('Ukuran gambar maksimal 2 MB.');
+    }
+    return await fileToDataUrl(file);
 }
 
 function getTransactionStats() {
@@ -260,6 +308,7 @@ async function loadProducts() {
 
     updateSellerProductSummary();
     updateDashboardStats();
+    renderCatalog();
 }
 
 function getProductFromDB(nama) {
@@ -285,10 +334,7 @@ function renderCatalog() {
         container.innerHTML += `
         <div class="product-card">
             <div class="product-icon" onclick="openProductDetail('${p.nama}', ${p.harga})">
-            ${p.gambar 
-                ? `<img src="/uploads/${p.gambar}" style="width:100%; height:100%; object-fit:cover; border-radius:10px;">`
-                : `<i class="fas fa-box"></i>`
-            }
+            ${productImageHTML(p.gambar, 'fas fa-box', 'width:100%; height:100%; object-fit:cover; border-radius:10px;')}
         </div>
 
             <div class="product-title">${p.nama}</div>
@@ -332,7 +378,7 @@ async function loadTransactions() {
         tr.dataset.trxId = t.trx_id;
         tr.innerHTML = `
             <td>${t.trx_id}</td>
-            <td>${t.product_name.replace(/\(x\d+\)/g, '').trim()} (x${t.qty})</td>
+            <td>${(t.product_name || 'Produk').replace(/\(x\d+\)/g, '').trim()} (x${t.qty})</td>
             <td>${formatRupiah(t.total_harga).replace(',00','')}</td>
             <td>${statusBadge}</td>
             <td>${aksiCell}</td>`;
@@ -617,10 +663,7 @@ function renderKeranjang() {
                 <input class="cart-checkbox" type="checkbox" ${item.selected ? 'checked' : ''} onchange="setPilihItem(${i}, this.checked)">
                 <div class="cart-product-thumb">
                     <span class="cart-discount-badge">${diskon}</span>
-                    ${product?.gambar 
-                        ? `<img src="/uploads/${product.gambar}" style="width:50px; height:50px; object-fit:cover;">`
-                        : `<i class="${icon}"></i>`
-                    }
+                    ${productImageHTML(product?.gambar, icon, 'width:50px; height:50px; object-fit:cover; border-radius:8px;')}
                 </div>
                 <div class="cart-product-info">
                     <div class="cart-stock">Sisa ${stok}</div>
@@ -791,24 +834,20 @@ async function konfirmasiBayar() {
         const trxId = 'TRX-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
         const itemTotal = item.harga * item.qty;
 
-        // Simpan ke DB
+        // Cari product_id dari productsDB
+        const product = getProductFromDB(item.nama);
+        const productId = product ? product.product_id : null;
+
+        // Simpan ke DB (backend menghitung total & mengurangi stok otomatis)
         await apiFetch('/transactions', {
             method: 'POST',
             body: JSON.stringify({
                 trx_id:       trxId,
-                product_name: item.nama,
+                product_id:   productId,
                 qty:          item.qty,
-                total_harga:  itemTotal,
                 metode,
                 pengiriman,
                 alamat
-            })
-        });
-        await apiFetch('/products/reduce-stock', {
-            method: 'PUT',
-            body: JSON.stringify({
-            nama: item.nama,
-            qty: item.qty
             })
         });
 
@@ -889,6 +928,7 @@ let barisProdukYangDiedit = null;
 
 function bukaModalProduk(tombolEdit = null) {
     const form = document.getElementById('form-produk');
+    form.reset();
     if (tombolEdit) {
         barisProdukYangDiedit = tombolEdit.closest('tr');
         document.getElementById('judul-modal-produk').innerText = 'Edit Produk';
@@ -900,68 +940,59 @@ function bukaModalProduk(tombolEdit = null) {
         barisProdukYangDiedit = null;
         document.getElementById('judul-modal-produk').innerText = 'Tambah Produk Baru';
         document.getElementById('btn-text-produk').innerText     = 'Simpan Data Produk';
-        form.reset();
     }
     openModal('modal-produk');
 }
 
 document.getElementById('form-produk').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const nama  = document.getElementById('input-nama-produk').value;
+    const nama  = document.getElementById('input-nama-produk').value.trim();
     const harga = document.getElementById('input-harga-produk').value;
     const stok  = document.getElementById('input-stok-produk').value;
-    const hargaRupiah = formatRupiah(parseInt(harga)).replace(',00','');
+    const submitButton = this.querySelector('button[type="submit"]');
 
-    if (barisProdukYangDiedit) {
-        // UPDATE
-        const productId = barisProdukYangDiedit.dataset.productId;
-        const result = await apiFetch('/products/' + productId, {
-            method: 'PUT',
-            body: JSON.stringify({ nama, harga: parseInt(harga), stok: parseInt(stok) })
-        });
-        if (result && result.success) {
-            barisProdukYangDiedit.cells[1].innerText  = nama;
-            barisProdukYangDiedit.cells[2].innerText  = hargaRupiah;
-            barisProdukYangDiedit.cells[3].innerText  = stok;
-            barisProdukYangDiedit.dataset.stok         = stok;
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+        const gambar = await getSelectedProductImageDataUrl();
+        const payload = {
+            nama,
+            harga: parseInt(harga, 10),
+            stok: parseInt(stok, 10) || 0,
+        };
+        if (gambar !== undefined) payload.gambar = gambar;
+
+        if (barisProdukYangDiedit) {
+            // UPDATE
+            const productId = barisProdukYangDiedit.dataset.productId;
+            const result = await apiFetch('/products/' + productId, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            if (!result || !result.success) {
+                throw new Error(result?.error || 'Gagal memperbarui produk.');
+            }
+        } else {
+            // INSERT
+            const newProduct = await apiFetch('/products', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (!newProduct || !newProduct.product_id) {
+                throw new Error(newProduct?.error || 'Gagal menambah produk.');
+            }
         }
-    } else {
-        // INSERT
-        const formData = new FormData();
-        formData.append('nama', nama);
-        formData.append('harga', harga);
-        formData.append('stok', stok);
 
-        const fileInput = document.getElementById('input-gambar-produk');
-        if (fileInput.files[0]) {
-            formData.append('gambar', fileInput.files[0]);
-        }
-
-        const res = await fetch('/products', {
-            method: 'POST',
-            body: formData
-        });
-
-        const newProduct = await res.json();
-
-        if (newProduct && newProduct.product_id) {
-            const tr = document.createElement('tr');
-            tr.dataset.productId = newProduct.product_id;
-            tr.dataset.stok      = newProduct.stok;
-            tr.innerHTML = `
-                <td>${newProduct.product_id}</td><td>${newProduct.nama}</td>
-                <td>${formatRupiah(newProduct.harga).replace(',00','')}</td><td>${newProduct.stok}</td>
-                <td>
-                    <a class="action-link edit"   onclick="bukaModalProduk(this)"><i class="fas fa-edit"></i> Edit</a>
-                    <a class="action-link delete" onclick="hapusBarisProduk(this)"><i class="fas fa-trash"></i> Hapus</a>
-                </td>`;
-            document.querySelector('#tabel-produk tbody').appendChild(tr);
-        }
+        await loadProducts();
+        closeModal('modal-produk');
+        this.reset();
+    } catch (err) {
+        console.error(err);
+        alert(err.message || 'Gagal menyimpan produk.');
+    } finally {
+        if (submitButton) submitButton.disabled = false;
     }
-
-    closeModal('modal-produk');
-    updateSellerProductSummary();
-    updateDashboardStats();
 });
 
 // ============================================================
@@ -1189,11 +1220,11 @@ function openProductDetail(nama, harga) {
     document.getElementById('modal-desc').innerText = product?.deskripsi || 'Produk berkualitas';
     document.getElementById('modal-stock').innerText = product?.stok || 0;
     const iconEl = document.getElementById('modal-icon');
-    if (product?.gambar) {
-        iconEl.innerHTML = `<img src="/uploads/${product.gambar}" style="width:100px; height:100px; object-fit:cover;">`;
-    } else {
-        iconEl.innerHTML = `<i class="${product?.icon || 'fas fa-box'}"></i>`;
-    }
+    iconEl.innerHTML = productImageHTML(
+        product?.gambar,
+        product?.icon || 'fas fa-box',
+        'width:100px; height:100px; object-fit:cover; border-radius:10px;'
+    );
 
     document.getElementById('modal-qty').value = 1;
 

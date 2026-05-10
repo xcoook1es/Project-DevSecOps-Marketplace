@@ -88,6 +88,7 @@ document.getElementById('form-login').addEventListener('submit', async function 
             nama:   data.nama,
             email:  data.email,
             role:   data.role,
+            token:  data.token,
         }));
         // Hapus key lama (localStorage) agar bersih
         localStorage.removeItem(ACTIVE_ROLE_KEY);

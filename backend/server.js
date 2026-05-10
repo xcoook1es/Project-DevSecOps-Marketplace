@@ -2,15 +2,28 @@ const express  = require('express');
 const helmet   = require('helmet');
 const cors     = require('cors');
 const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const pool     = require('./db');
+const { sendNotifikasi } = require('./telegram');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'ganti-dengan-secret-kuat';
 
 // ── Middleware ───────────────────────────────────────────────
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+const loginLimiter = rateLimit({
+    windowMs: 10 * 1000, // 10 detik
+    max: 5,
+    message: {
+        error: 'Terlalu banyak percobaan login.'
+    }
+});
 
 // ── Helper: ambil IP dari request ────────────────────────────
 function getIP(req) {
@@ -31,8 +44,28 @@ async function logActivity(type, severity, activity, actor, ip = '—') {
 }
 
 // ── Helper: generate ID ──────────────────────────────────────
+// ── Middleware JWT ─────────────────────────────
 function genId(prefix, num) {
     return `${prefix}-${String(num).padStart(3, '0')}`;
+}
+function authMiddleware(req, res, next) {
+    const token = req.headers['authorization']?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({
+            error: 'Token tidak ditemukan.'
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({
+            error: 'Token tidak valid.'
+        });
+    }
 }
 
 // ── Inisialisasi tabel (berjalan setiap startup) ─────────────
@@ -48,6 +81,18 @@ async function ensureTables() {
             created_at TIMESTAMP DEFAULT NOW()
         )
     `);
+
+    // Tambah kolom product_name ke transactions jika belum ada
+    await pool.query(`
+        ALTER TABLE transactions
+        ADD COLUMN IF NOT EXISTS product_name VARCHAR(255)
+    `).catch(() => {});
+
+    // Tambah kolom gambar ke products jika database lama belum punya kolom ini
+    await pool.query(`
+        ALTER TABLE products
+        ADD COLUMN IF NOT EXISTS gambar TEXT
+    `).catch(() => {});
 }
 
 // ── Seed admin & sample users saat startup ──────────────────
@@ -72,7 +117,7 @@ async function seedInitialData() {
 // ============================================================
 
 // POST /api/auth/login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
     const { role, email, password } = req.body;
     const ip = getIP(req);
 
@@ -105,12 +150,22 @@ app.post('/api/auth/login', async (req, res) => {
         const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
         await logActivity('Login', 'SUCCESS', 'Login berhasil', `${user.nama} (${roleLabel})`, ip);
 
+        const token = jwt.sign(
+            {
+                userId: user.user_id,
+                role: user.role
+            },
+            JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
         res.json({
             success: true,
+            token,
             userId: user.user_id,
-            nama:   user.nama,
-            email:  user.email,
-            role:   user.role,
+            nama: user.nama,
+            email: user.email,
+            role: user.role,
         });
     } catch (err) {
         console.error(err);
@@ -162,7 +217,7 @@ app.post('/api/auth/register', async (req, res) => {
 // ============================================================
 
 // GET /api/users
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', authMiddleware, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT user_id, nama, email, role, status, created_at FROM users ORDER BY created_at ASC'
@@ -175,7 +230,7 @@ app.get('/api/users', async (req, res) => {
 });
 
 // POST /api/users (tambah pengguna baru dari admin panel)
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', authMiddleware, async (req, res) => {
     const { nama, email, role, status } = req.body;
     const ip = getIP(req);
 
@@ -207,7 +262,7 @@ app.post('/api/users', async (req, res) => {
 });
 
 // PUT /api/users/:userId
-app.put('/api/users/:userId', async (req, res) => {
+app.put('/api/users/:userId', authMiddleware, async (req, res) => {
     const { userId } = req.params;
     const { nama, email, role, status } = req.body;
     const ip = getIP(req);
@@ -228,7 +283,7 @@ app.put('/api/users/:userId', async (req, res) => {
 });
 
 // DELETE /api/users/:userId
-app.delete('/api/users/:userId', async (req, res) => {
+app.delete('/api/users/:userId', authMiddleware, async (req, res) => {
     const { userId } = req.params;
     const ip = getIP(req);
 
@@ -285,11 +340,13 @@ app.get('/api/products', async (req, res) => {
 });
 
 // POST /api/products
-app.post('/api/products', async (req, res) => {
-    const { nama, harga, stok } = req.body;
+app.post('/api/products', authMiddleware, async (req, res) => {
+    const { nama, harga, stok, gambar } = req.body;
     const ip = getIP(req);
+    const hargaNumber = parseInt(harga, 10);
+    const stokNumber = parseInt(stok, 10) || 0;
 
-    if (!nama || !harga)
+    if (!nama || Number.isNaN(hargaNumber))
         return res.status(400).json({ error: 'Nama dan harga wajib diisi.' });
 
     try {
@@ -297,8 +354,8 @@ app.post('/api/products', async (req, res) => {
         const productId = genId('PRD', parseInt(count.rows[0].count) + 1);
 
         await pool.query(
-            'INSERT INTO products (product_id, nama, harga, stok) VALUES ($1,$2,$3,$4)',
-            [productId, nama.trim(), parseInt(harga), parseInt(stok) || 0]
+            'INSERT INTO products (product_id, nama, harga, stok, gambar) VALUES ($1,$2,$3,$4,$5)',
+            [productId, nama.trim(), hargaNumber, stokNumber, gambar || null]
         );
 
         await logActivity('Produk', 'INFO', `Produk baru ditambahkan: ${nama.trim()} (${productId})`, 'Seller', ip);
@@ -312,16 +369,29 @@ app.post('/api/products', async (req, res) => {
 });
 
 // PUT /api/products/:productId
-app.put('/api/products/:productId', async (req, res) => {
+app.put('/api/products/:productId', authMiddleware, async (req, res) => {
     const { productId } = req.params;
-    const { nama, harga, stok } = req.body;
+    const { nama, harga, stok, gambar } = req.body;
     const ip = getIP(req);
+    const hargaNumber = parseInt(harga, 10);
+    const stokNumber = parseInt(stok, 10);
+
+    if (!nama || Number.isNaN(hargaNumber) || Number.isNaN(stokNumber)) {
+        return res.status(400).json({ error: 'Nama, harga, dan stok wajib diisi dengan benar.' });
+    }
 
     try {
-        await pool.query(
-            'UPDATE products SET nama=$1, harga=$2, stok=$3 WHERE product_id=$4',
-            [nama, parseInt(harga), parseInt(stok), productId]
-        );
+        if (typeof gambar === 'string') {
+            await pool.query(
+                'UPDATE products SET nama=$1, harga=$2, stok=$3, gambar=$4 WHERE product_id=$5',
+                [nama, hargaNumber, stokNumber, gambar || null, productId]
+            );
+        } else {
+            await pool.query(
+                'UPDATE products SET nama=$1, harga=$2, stok=$3 WHERE product_id=$4',
+                [nama, hargaNumber, stokNumber, productId]
+            );
+        }
 
         await logActivity('Produk', 'INFO', `Produk ${productId} diperbarui: ${nama}`, 'Seller', ip);
 
@@ -333,7 +403,7 @@ app.put('/api/products/:productId', async (req, res) => {
 });
 
 // DELETE /api/products/:productId
-app.delete('/api/products/:productId', async (req, res) => {
+app.delete('/api/products/:productId', authMiddleware, async (req, res) => {
     const { productId } = req.params;
     const ip = getIP(req);
 
@@ -368,27 +438,102 @@ app.get('/api/transactions', async (req, res) => {
 });
 
 // POST /api/transactions
-app.post('/api/transactions', async (req, res) => {
-    const { trx_id, product_name, qty, total_harga, metode, pengiriman, alamat } = req.body;
+app.post('/api/transactions', authMiddleware, async (req, res) => {
+    const { trx_id, product_id, qty, metode, pengiriman, alamat } = req.body;
     const ip = getIP(req);
 
-    if (!trx_id || !product_name || !qty || !total_harga)
-        return res.status(400).json({ error: 'Data transaksi tidak lengkap.' });
+    if (!trx_id || !product_id || !qty) {
+        return res.status(400).json({
+            error: 'Data transaksi tidak lengkap.'
+        });
+    }
 
     try {
-        await pool.query(
-            `INSERT INTO transactions (trx_id, product_name, qty, total_harga, status, metode, pengiriman, alamat)
-             VALUES ($1,$2,$3,$4,'Diproses',$5,$6,$7)`,
-            [trx_id, product_name, parseInt(qty), parseInt(total_harga), metode, pengiriman, alamat]
+
+        // Ambil produk dari database
+        const prod = await pool.query(
+            'SELECT nama, harga, stok FROM products WHERE product_id = $1',
+            [product_id]
         );
 
-        await logActivity('Transaksi', 'SUCCESS', `Checkout berhasil — ${trx_id} (${product_name})`, 'Pembeli (User)', ip);
+        // Produk tidak ditemukan
+        if (prod.rows.length === 0) {
+            return res.status(404).json({
+                error: 'Produk tidak ditemukan.'
+            });
+        }
 
-        const newTrx = await pool.query('SELECT * FROM transactions WHERE trx_id = $1', [trx_id]);
+        const product = prod.rows[0];
+
+        // Cek stok
+        if (product.stok < qty) {
+            return res.status(400).json({
+                error: 'Stok tidak mencukupi.'
+            });
+        }
+
+        // HITUNG DI SERVER
+        const total_harga = product.harga * qty;
+
+        // Simpan transaksi
+        await pool.query(
+            `INSERT INTO transactions
+            (trx_id, product_name, qty, total_harga, status, metode, pengiriman, alamat)
+            VALUES ($1,$2,$3,$4,'Diproses',$5,$6,$7)`,
+
+            [
+                trx_id,
+                product.nama,
+                parseInt(qty),
+                parseInt(total_harga),
+                metode,
+                pengiriman,
+                alamat
+            ]
+        );
+
+        // Kurangi stok
+        await pool.query(
+            'UPDATE products SET stok = stok - $1 WHERE product_id = $2',
+            [qty, product_id]
+        );
+
+        await logActivity(
+            'Transaksi',
+            'SUCCESS',
+            `Checkout berhasil — ${trx_id} (${product.nama})`,
+            'Pembeli (User)',
+            ip
+        );
+
+        const newTrx = await pool.query(
+    'SELECT * FROM transactions WHERE trx_id = $1',
+    [trx_id]
+);
+
+// ================= TELEGRAM =================
+        try {
+            const chatId = '7153610515';
+            const pesan = `
+        🛒 Transaksi Berhasil
+
+        ID: ${trx_id}
+        Produk: ${product.nama}
+        Qty: ${qty}
+        Total: Rp${total_harga}
+        Status: Diproses
+        `;
+
+            await sendNotifikasi(chatId, pesan);
+
+        } catch (err) {
+            console.error('Gagal kirim telegram:', err.message);
+        }
+        // ============================================
         res.json(newTrx.rows[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Gagal membuat transaksi.' });
+        res.status(500).json({ error: 'Gagal memproses transaksi.' });
     }
 });
 
@@ -417,7 +562,7 @@ app.put('/api/transactions/:trxId/complete', async (req, res) => {
 // ============================================================
 
 // GET /api/logs
-app.get('/api/logs', async (req, res) => {
+app.get('/api/logs', authMiddleware, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 200'

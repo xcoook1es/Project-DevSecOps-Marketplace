@@ -20,6 +20,7 @@
   "homepage": "https://github.com/xcoook1es/Project-DevSecOps-Marketplace#readme",
   "dependencies": {
     "express": "^5.2.1",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "node-telegram-bot-api": "^0.67.0"
   }
 }
