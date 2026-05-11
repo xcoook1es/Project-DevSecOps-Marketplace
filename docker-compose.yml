@@ -1,6 +1,6 @@
 services:
 
-  # ── PostgreSQL Database ──────────────────────────────────────
+  # ── PostgreSQL Database 
   db:
     image: postgres:16-alpine
     container_name: trustmarket_db
@@ -20,7 +20,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Redis ───────────────────────────────────
+  # ── Redis 
   redis:
     image: redis:7-alpine
     container_name: trustmarket_redis
@@ -28,7 +28,7 @@ services:
     ports:
       - "6379:6379"
 
-  # ── Node.js Backend API ──────────────────────────────────────
+  # ── Node.js Backend API 
   api:
     build: ./backend
     container_name: trustmarket_api
@@ -45,7 +45,7 @@ services:
       db:
         condition: service_healthy
 
-  # ── Nginx Static Frontend ────────────────────────────────────
+  # ── Nginx Static Frontend 
   web:
     build: .
     container_name: trustmarket_static_web

@@ -92,9 +92,3 @@ INSERT INTO products (product_id, nama, harga, stok) VALUES
     ('PRD-003', 'Kacamata Hitam Y2K',     120000,  5),
     ('PRD-004', 'Headphone Wireless',     450000,  3)
 ON CONFLICT (product_id) DO NOTHING;
-
--- ============================================================
--- Seed: Pengguna sampel (password: User@123!)
--- hash bcrypt dari 'User@123!' di-generate saat startup backend
--- Admin di-seed lewat kode startup server.js
--- ============================================================

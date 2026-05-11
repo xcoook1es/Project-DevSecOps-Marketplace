@@ -1,17 +1,17 @@
-const express  = require('express');
-const helmet   = require('helmet');
-const cors     = require('cors');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const pool     = require('./db');
+const pool = require('./db');
 const { sendNotifikasi } = require('./telegram');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'ganti-dengan-secret-kuat';
 
-// ── Middleware ───────────────────────────────────────────────
+// ── Middleware 
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors());
@@ -25,13 +25,13 @@ const loginLimiter = rateLimit({
     }
 });
 
-// ── Helper: ambil IP dari request ────────────────────────────
+// ── Helper: ambil IP dari request
 function getIP(req) {
     return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '—')
         .split(',')[0].trim();
 }
 
-// ── Helper: catat log aktivitas ke DB ────────────────────────
+// ── Helper: catat log aktivitas ke DB
 async function logActivity(type, severity, activity, actor, ip = '—') {
     try {
         await pool.query(
@@ -43,8 +43,8 @@ async function logActivity(type, severity, activity, actor, ip = '—') {
     }
 }
 
-// ── Helper: generate ID ──────────────────────────────────────
-// ── Middleware JWT ─────────────────────────────
+// ── Helper: generate ID 
+// ── Middleware JWT 
 function genId(prefix, num) {
     return `${prefix}-${String(num).padStart(3, '0')}`;
 }
@@ -68,7 +68,7 @@ function authMiddleware(req, res, next) {
     }
 }
 
-// ── Inisialisasi tabel (berjalan setiap startup) ─────────────
+// ── Inisialisasi tabel (berjalan setiap startup) 
 async function ensureTables() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS system_logs (
@@ -82,20 +82,17 @@ async function ensureTables() {
         )
     `);
 
-    // Tambah kolom product_name ke transactions jika belum ada
     await pool.query(`
         ALTER TABLE transactions
         ADD COLUMN IF NOT EXISTS product_name VARCHAR(255)
-    `).catch(() => {});
+    `).catch(() => { });
 
-    // Tambah kolom gambar ke products jika database lama belum punya kolom ini
     await pool.query(`
         ALTER TABLE products
         ADD COLUMN IF NOT EXISTS gambar TEXT
-    `).catch(() => {});
+    `).catch(() => { });
 }
 
-// ── Seed admin & sample users saat startup ──────────────────
 async function seedInitialData() {
     try {
         // Admin account
@@ -193,9 +190,9 @@ app.post('/api/auth/register', async (req, res) => {
         if (exists.rows.length > 0)
             return res.status(409).json({ error: 'Email sudah terdaftar!' });
 
-        const count  = await pool.query('SELECT COUNT(*) FROM users');
+        const count = await pool.query('SELECT COUNT(*) FROM users');
         const userId = genId('USR', parseInt(count.rows[0].count) + 1);
-        const hash   = await bcrypt.hash(password, 10);
+        const hash = await bcrypt.hash(password, 10);
 
         await pool.query(
             'INSERT INTO users (user_id, nama, email, password_hash, role) VALUES ($1,$2,$3,$4,$5)',
@@ -229,7 +226,7 @@ app.get('/api/users', authMiddleware, async (req, res) => {
     }
 });
 
-// POST /api/users (tambah pengguna baru dari admin panel)
+// POST /api/users
 app.post('/api/users', authMiddleware, async (req, res) => {
     const { nama, email, role, status } = req.body;
     const ip = getIP(req);
@@ -242,9 +239,9 @@ app.post('/api/users', authMiddleware, async (req, res) => {
         if (exists.rows.length > 0)
             return res.status(409).json({ error: 'Email sudah terdaftar!' });
 
-        const count  = await pool.query('SELECT COUNT(*) FROM users');
+        const count = await pool.query('SELECT COUNT(*) FROM users');
         const userId = genId('USR', parseInt(count.rows[0].count) + 1);
-        const hash   = await bcrypt.hash('User@123!', 10);
+        const hash = await bcrypt.hash('User@123!', 10);
 
         await pool.query(
             'INSERT INTO users (user_id, nama, email, password_hash, role, status) VALUES ($1,$2,$3,$4,$5,$6)',
@@ -350,7 +347,7 @@ app.post('/api/products', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Nama dan harga wajib diisi.' });
 
     try {
-        const count     = await pool.query('SELECT COUNT(*) FROM products');
+        const count = await pool.query('SELECT COUNT(*) FROM products');
         const productId = genId('PRD', parseInt(count.rows[0].count) + 1);
 
         await pool.query(
@@ -507,11 +504,11 @@ app.post('/api/transactions', authMiddleware, async (req, res) => {
         );
 
         const newTrx = await pool.query(
-    'SELECT * FROM transactions WHERE trx_id = $1',
-    [trx_id]
-);
+            'SELECT * FROM transactions WHERE trx_id = $1',
+            [trx_id]
+        );
 
-// ================= TELEGRAM =================
+        // ================= TELEGRAM =================
         try {
             const chatId = '7153610515';
             const pesan = `
@@ -579,7 +576,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // ── Start server ─────────────────────────────────────────────
 app.listen(PORT, async () => {
-    console.log(`🚀 TrustMarket API berjalan di port ${PORT}`);
+    console.log(`TrustMarket API berjalan di port ${PORT}`);
     await ensureTables();
     await seedInitialData();
 });

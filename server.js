@@ -3,7 +3,7 @@ const helmet = require('helmet'); // Memanggil pustaka keamanan
 
 const app = express();
 
-// Mengaktifkan perlindungan header HTTP (Nilai plus untuk justifikasi keamanan!)
+// Mengaktifkan perlindungan header HTTP 
 app.use(helmet());
 
 app.get('/', (req, res) => {
