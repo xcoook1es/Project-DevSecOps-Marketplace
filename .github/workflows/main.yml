@@ -15,9 +15,79 @@ permissions:
 jobs:
 
   # ══════════════════════════════════════════════════════════════
+  # SAST — Static Application Security Testing (Semgrep)
+  # ══════════════════════════════════════════════════════════════
+  sast-semgrep:
+    name: "🔍 SAST — Semgrep Scan"
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Run Semgrep Full Scan
+      run: semgrep scan --config auto --json --output semgrep-results.json . || true
+
+    - name: Display Semgrep Results Summary
+      run: semgrep scan --config auto --text .  || true
+
+    - name: Upload Semgrep Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: semgrep-report
+        path: semgrep-results.json
+        retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════
+  # SAST — Static Application Security Testing (njsscan)
+  # ══════════════════════════════════════════════════════════════
+  sast-njsscan:
+    name: "🔍 SAST — njsscan (Node.js)"
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Install njsscan
+      run: pip install njsscan
+
+    - name: Run njsscan on Backend
+      run: njsscan --json --output njsscan-backend.json ./backend || true
+
+    - name: Run njsscan on Frontend
+      run: njsscan --json --output njsscan-frontend.json ./src || true
+
+    - name: Display njsscan Results
+      run: |
+        echo "══════════════════════════════════════"
+        echo "📋 njsscan Results — Backend"
+        echo "══════════════════════════════════════"
+        njsscan ./backend || true
+        echo ""
+        echo "══════════════════════════════════════"
+        echo "📋 njsscan Results — Frontend"
+        echo "══════════════════════════════════════"
+        njsscan ./src || true
+
+    - name: Upload njsscan Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: njsscan-report
+        path: |
+          njsscan-backend.json
+          njsscan-frontend.json
+        retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════
   # CI — Build & Security Check
   # ══════════════════════════════════════════════════════════════
   build-and-security-check:
+    name: "🏗️ Build & Security Check"
     runs-on: ubuntu-latest
 
     steps:
@@ -43,11 +113,59 @@ jobs:
       run: docker compose up -d --build
 
   # ══════════════════════════════════════════════════════════════
+  # DAST — Dynamic Application Security Testing (OWASP ZAP)
+  # ══════════════════════════════════════════════════════════════
+  dast-zap:
+    name: "🌐 DAST — OWASP ZAP Scan"
+    runs-on: ubuntu-latest
+    needs: build-and-security-check
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Start Application Stack
+      run: docker compose up -d --build
+
+    - name: Wait for Application to be Ready
+      run: |
+        echo "⏳ Menunggu aplikasi siap..."
+        for i in $(seq 1 30); do
+          if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            echo "✅ Aplikasi sudah siap! (percobaan ke-$i)"
+            break
+          fi
+          echo "   Percobaan ke-$i — belum siap, menunggu 5 detik..."
+          sleep 5
+        done
+
+    - name: OWASP ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.14.0
+      with:
+        target: 'http://localhost:3000'
+        rules_file_name: '.zap/rules.tsv'
+        allow_issue_writing: false
+        cmd_options: '-a'
+
+    - name: Upload ZAP Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: zap-report
+        path: report_html.html
+        retention-days: 30
+
+    - name: Stop Application Stack
+      if: always()
+      run: docker compose down -v
+
+  # ══════════════════════════════════════════════════════════════
   # CD — Deploy Docker Images ke GitHub Container Registry
   # ══════════════════════════════════════════════════════════════
   deploy:
+    name: "📦 Deploy to GHCR"
     runs-on: ubuntu-latest
-    needs: build-and-security-check       
+    needs: [build-and-security-check, sast-semgrep, sast-njsscan, dast-zap]
     if: github.event_name == 'push'       
 
     steps:
