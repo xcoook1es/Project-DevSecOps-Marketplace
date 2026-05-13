@@ -40,7 +40,7 @@ services:
       DB_USER: trustmarket
       DB_PASSWORD: trustmarket_secret
       PORT: 3001
-      TELEGRAM_BOT_TOKEN: 8798801553:AAGwjTB1M9A0iDuoXLcWy0ssuRrPkeEqEAQ
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       db:
         condition: service_healthy

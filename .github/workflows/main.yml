@@ -163,7 +163,7 @@ jobs:
   # CD — Deploy Docker Images ke GitHub Container Registry
   # ══════════════════════════════════════════════════════════════
   deploy:
-    name: "📦 Deploy to GHCR"
+    name: "Deploy to GHCR"
     runs-on: ubuntu-latest
     needs: [build-and-security-check, sast-semgrep, sast-njsscan, dast-zap]
     if: github.event_name == 'push'       
