@@ -7,15 +7,58 @@ const rateLimit = require('express-rate-limit');
 const pool = require('./db');
 const { sendNotifikasi } = require('./telegram');
 
+// ── Prometheus Metrics (prom-client) ─────────────────────────────────────────
+const client = require('prom-client');
+const register = new client.Registry();
+
+// Default metrics: event loop lag, heap, GC, dll.
+// Catatan: prom-client sudah punya prefix 'nodejs_' secara internal,
+// jangan tambahkan prefix lagi agar tidak menjadi 'nodejs_nodejs_...'
+client.collectDefaultMetrics({ register });
+
+// Counter: total HTTP requests
+const httpRequestsTotal = new client.Counter({
+    name: 'http_requests_total',
+    help: 'Total jumlah HTTP request',
+    labelNames: ['method', 'route', 'status_code'],
+    registers: [register],
+});
+
+// Histogram: durasi HTTP request
+const httpRequestDuration = new client.Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'Durasi HTTP request dalam detik',
+    labelNames: ['method', 'route', 'status_code'],
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    registers: [register],
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'ganti-dengan-secret-kuat';
 
-// ── Middleware 
+// ── Middleware ───────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// ── Middleware Prometheus: catat setiap request ───────────────────────────────
+app.use((req, res, next) => {
+    const end = httpRequestDuration.startTimer();
+    res.on('finish', () => {
+        // Normalkan path agar tidak terlalu banyak label (cardinality)
+        const route = req.route?.path || req.path.replace(/\/[0-9a-f-]{6,}/gi, '/:id') || 'unknown';
+        const labels = {
+            method: req.method,
+            route,
+            status_code: res.statusCode,
+        };
+        httpRequestsTotal.inc(labels);
+        end(labels);
+    });
+    next();
+});
 
 const loginLimiter = rateLimit({
     windowMs: 10 * 1000, // 10 detik
@@ -568,6 +611,17 @@ app.get('/api/logs', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Gagal mengambil log.' });
+    }
+});
+
+// ── Prometheus Metrics endpoint ──────────────────────────────
+// Diakses oleh Prometheus scraper (tidak perlu auth)
+app.get('/metrics', async (req, res) => {
+    try {
+        res.set('Content-Type', register.contentType);
+        res.end(await register.metrics());
+    } catch (err) {
+        res.status(500).end(err.message);
     }
 });
 

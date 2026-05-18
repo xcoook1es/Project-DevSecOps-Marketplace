@@ -1,6 +1,6 @@
 services:
 
-  # ── PostgreSQL Database 
+  # ── PostgreSQL Database ────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: trustmarket_db
@@ -19,16 +19,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - app-network
+      - monitoring-network
 
-  # ── Redis 
+  # ── Redis ─────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: trustmarket_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
+    networks:
+      - app-network
+      - monitoring-network
 
-  # ── Node.js Backend API 
+  # ── Node.js Backend API ───────────────────────────────────────
   api:
     build: ./backend
     container_name: trustmarket_api
@@ -44,8 +50,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - app-network
+      - monitoring-network
 
-  # ── Nginx Static Frontend 
+  # ── Nginx Static Frontend ─────────────────────────────────────
   web:
     build: .
     container_name: trustmarket_static_web
@@ -55,6 +64,140 @@ services:
       - "3443:443"
     depends_on:
       - api
+    networks:
+      - app-network
+      - monitoring-network
+
+  # ══════════════════════════════════════════════════════════════
+  # MONITORING STACK
+  # ══════════════════════════════════════════════════════════════
+
+  # ── Prometheus — Metrics Collector ───────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: trustmarket_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring-network
+
+  # ── Grafana — Dashboard & Visualization ──────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trustmarket_grafana
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: trustmarket@grafana
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3100
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+
+  # ── Node Exporter — Host CPU / RAM / Disk Metrics ────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: trustmarket_node_exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring-network
+
+  # ── cAdvisor — Docker Container Metrics ──────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: trustmarket_cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring-network
+
+  # ── PostgreSQL Exporter ───────────────────────────────────────
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: trustmarket_postgres_exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://trustmarket:trustmarket_secret@db:5432/trustmarket?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - monitoring-network
+
+  # ── Redis Exporter ────────────────────────────────────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: trustmarket_redis_exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    depends_on:
+      - redis
+    networks:
+      - monitoring-network
+
+  # ── Nginx Exporter ────────────────────────────────────────────
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: trustmarket_nginx_exporter
+    restart: unless-stopped
+    ports:
+      - "9113:9113"
+    command:
+      - '-nginx.scrape-uri=http://web:80/nginx_status'
+    depends_on:
+      - web
+    networks:
+      - monitoring-network
+
+networks:
+  app-network:
+    driver: bridge
+  monitoring-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:

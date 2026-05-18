@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s       
+  evaluation_interval: 15s   
+
+# ─── Scrape Targets ───────────────────────────────────────────────────────────
+scrape_configs:
+
+  # Prometheus itu sendiri
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter — metrics CPU, RAM, disk dari host/container
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor — metrics per Docker container
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # Nginx Exporter (metrics Nginx)
+  - job_name: 'nginx-exporter'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+
+  # TrustMarket API (Node.js custom metrics via prom-client)
+  - job_name: 'trustmarket-api'
+    static_configs:
+      - targets: ['api:3001']
+    metrics_path: '/metrics'
