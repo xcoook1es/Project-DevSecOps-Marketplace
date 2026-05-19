@@ -151,6 +151,50 @@ select.form-control { padding-left: 40px; appearance: none; cursor: pointer; }
     display: none; text-align: left;
 }
 
+.mfa-secret-box {
+    border: 1.5px dashed #93c5fd;
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.mfa-secret-box span {
+    display: block;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.mfa-secret-box strong {
+    color: #1e3a8a;
+    display: block;
+    font-family: monospace;
+    font-size: 14px;
+    letter-spacing: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.mfa-link {
+    align-items: center;
+    color: #2563eb;
+    display: inline-flex;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 7px;
+    justify-content: center;
+    margin: 0 0 16px;
+    text-decoration: none;
+}
+
+.mfa-link:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
 @media (max-width: 480px) {
     body {
         height: auto;

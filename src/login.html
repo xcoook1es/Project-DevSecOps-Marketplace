@@ -141,6 +141,65 @@
             </form>
         </div>
 
+        <div id="view-mfa-setup" class="auth-view hidden">
+            <h2>Aktifkan MFA</h2>
+            <p class="subtitle">Hubungkan akun dengan aplikasi authenticator</p>
+
+            <div id="mfa-setup-alert" class="alert-box"></div>
+
+            <div class="mfa-secret-box">
+                <span>Kunci Manual</span>
+                <strong id="mfa-setup-secret">-</strong>
+            </div>
+
+            <a id="mfa-setup-link" class="mfa-link" href="#" target="_blank" rel="noopener">
+                <i class="fas fa-mobile-screen"></i> Buka di Authenticator
+            </a>
+
+            <form id="form-mfa-setup">
+                <div class="form-group">
+                    <label>Kode 6 Digit</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-shield-halved"></i>
+                        <input type="text" id="mfa-setup-code" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit btn-green" id="btn-mfa-setup">
+                    Verifikasi & Masuk <i class="fas fa-circle-check"></i>
+                </button>
+
+                <div class="extra-links">
+                    <a onclick="cancelMfa()">Kembali ke Login</a>
+                </div>
+            </form>
+        </div>
+
+        <div id="view-mfa-verify" class="auth-view hidden">
+            <h2>Verifikasi MFA</h2>
+            <p class="subtitle">Masukkan kode dari aplikasi authenticator</p>
+
+            <div id="mfa-verify-alert" class="alert-box"></div>
+
+            <form id="form-mfa-verify">
+                <div class="form-group">
+                    <label>Kode 6 Digit</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-shield-halved"></i>
+                        <input type="text" id="mfa-verify-code" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn-mfa-verify">
+                    Verifikasi <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <div class="extra-links">
+                    <a onclick="cancelMfa()">Kembali ke Login</a>
+                </div>
+            </form>
+        </div>
+
     </div>
 
     <script src="login.js"></script>
