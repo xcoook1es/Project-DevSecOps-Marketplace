@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const pool = require('./db');
 const { sendNotifikasi } = require('./telegram');
 
@@ -36,6 +37,8 @@ const httpRequestDuration = new client.Histogram({
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'ganti-dengan-secret-kuat';
+const MFA_ISSUER = process.env.MFA_ISSUER || 'TrustMarket';
+const MFA_TOKEN_EXPIRES_IN = '5m';
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
@@ -68,6 +71,14 @@ const loginLimiter = rateLimit({
     }
 });
 
+const mfaLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 menit
+    max: 5,
+    message: {
+        error: 'Terlalu banyak percobaan MFA. Coba lagi beberapa saat.'
+    }
+});
+
 // ── Helper: ambil IP dari request
 function getIP(req) {
     return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '—')
@@ -86,6 +97,195 @@ async function logActivity(type, severity, activity, actor, ip = '—') {
     }
 }
 
+// Helper MFA: TOTP RFC 6238 tanpa dependensi eksternal.
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
+}
+
+function roleLabel(role) {
+    return String(role || '').charAt(0).toUpperCase() + String(role || '').slice(1);
+}
+
+function base32Encode(buffer) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = '';
+    let output = '';
+
+    for (const byte of buffer) {
+        bits += byte.toString(2).padStart(8, '0');
+    }
+
+    for (let i = 0; i < bits.length; i += 5) {
+        const chunk = bits.slice(i, i + 5).padEnd(5, '0');
+        output += alphabet[parseInt(chunk, 2)];
+    }
+
+    return output;
+}
+
+function base32Decode(secret) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const cleanSecret = String(secret || '').replace(/[\s=]/g, '').toUpperCase();
+    let bits = '';
+    const bytes = [];
+
+    for (const char of cleanSecret) {
+        const value = alphabet.indexOf(char);
+        if (value === -1) {
+            throw new Error('Secret MFA tidak valid.');
+        }
+        bits += value.toString(2).padStart(5, '0');
+    }
+
+    for (let i = 0; i + 8 <= bits.length; i += 8) {
+        bytes.push(parseInt(bits.slice(i, i + 8), 2));
+    }
+
+    return Buffer.from(bytes);
+}
+
+function generateMfaSecret() {
+    return base32Encode(crypto.randomBytes(20));
+}
+
+function getMfaEncryptionKey() {
+    return crypto
+        .createHash('sha256')
+        .update(process.env.MFA_SECRET_ENCRYPTION_KEY || JWT_SECRET)
+        .digest();
+}
+
+function protectMfaSecret(secret) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', getMfaEncryptionKey(), iv);
+    const encrypted = Buffer.concat([
+        cipher.update(secret, 'utf8'),
+        cipher.final()
+    ]);
+    const tag = cipher.getAuthTag();
+
+    return [
+        'enc',
+        iv.toString('base64'),
+        tag.toString('base64'),
+        encrypted.toString('base64')
+    ].join(':');
+}
+
+function unprotectMfaSecret(secret) {
+    if (!String(secret || '').startsWith('enc:')) {
+        return secret;
+    }
+
+    const [, iv, tag, encrypted] = String(secret).split(':');
+    const decipher = crypto.createDecipheriv(
+        'aes-256-gcm',
+        getMfaEncryptionKey(),
+        Buffer.from(iv, 'base64')
+    );
+    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+
+    return Buffer.concat([
+        decipher.update(Buffer.from(encrypted, 'base64')),
+        decipher.final()
+    ]).toString('utf8');
+}
+
+function generateTotp(secret, counter, digits = 6) {
+    const key = base32Decode(secret);
+    const counterBuffer = Buffer.alloc(8);
+    counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+    counterBuffer.writeUInt32BE(counter >>> 0, 4);
+
+    const digest = crypto.createHmac('sha1', key).update(counterBuffer).digest();
+    const offset = digest[digest.length - 1] & 0x0f;
+    const code = (
+        ((digest[offset] & 0x7f) << 24) |
+        ((digest[offset + 1] & 0xff) << 16) |
+        ((digest[offset + 2] & 0xff) << 8) |
+        (digest[offset + 3] & 0xff)
+    ) % (10 ** digits);
+
+    return String(code).padStart(digits, '0');
+}
+
+function safeCompareCode(inputCode, expectedCode) {
+    const inputBuffer = Buffer.from(String(inputCode));
+    const expectedBuffer = Buffer.from(String(expectedCode));
+
+    return inputBuffer.length === expectedBuffer.length
+        && crypto.timingSafeEqual(inputBuffer, expectedBuffer);
+}
+
+function verifyTotp(secret, code, window = 2) {
+    const cleanCode = String(code || '').replace(/\s/g, '');
+    if (!/^\d{6}$/.test(cleanCode)) return false;
+
+    const currentCounter = Math.floor(Date.now() / 1000 / 30);
+    for (let offset = -window; offset <= window; offset++) {
+        if (safeCompareCode(cleanCode, generateTotp(secret, currentCounter + offset))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function buildOtpAuthUrl(user, secret) {
+    const label = encodeURIComponent(`${MFA_ISSUER}:${user.email}`);
+    const issuer = encodeURIComponent(MFA_ISSUER);
+    return `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+}
+
+function createSessionToken(user) {
+    return jwt.sign(
+        {
+            userId: user.user_id,
+            role: user.role,
+            purpose: 'session'
+        },
+        JWT_SECRET,
+        { expiresIn: '1d' }
+    );
+}
+
+function createMfaToken(user, setupRequired = false) {
+    return jwt.sign(
+        {
+            userId: user.user_id,
+            role: user.role,
+            purpose: 'mfa',
+            setupRequired
+        },
+        JWT_SECRET,
+        { expiresIn: MFA_TOKEN_EXPIRES_IN }
+    );
+}
+
+function verifyMfaToken(mfaToken) {
+    const decoded = jwt.verify(mfaToken, JWT_SECRET);
+    if (decoded.purpose !== 'mfa') {
+        throw new Error('Token MFA tidak valid.');
+    }
+    return decoded;
+}
+
+function buildAuthResponse(user, token) {
+    return {
+        success: true,
+        token,
+        userId: user.user_id,
+        nama: user.nama,
+        email: user.email,
+        role: user.role,
+    };
+}
+
+function isTokenError(err) {
+    return ['TokenExpiredError', 'JsonWebTokenError', 'NotBeforeError'].includes(err.name)
+        || err.message === 'Token MFA tidak valid.';
+}
+
 // ── Helper: generate ID 
 // ── Middleware JWT 
 function genId(prefix, num) {
@@ -102,6 +302,11 @@ function authMiddleware(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.purpose !== 'session') {
+            return res.status(401).json({
+                error: 'Token tidak valid.'
+            });
+        }
         req.user = decoded;
         next();
     } catch (err) {
@@ -123,6 +328,14 @@ async function ensureTables() {
             ip_address VARCHAR(45)  NOT NULL DEFAULT '—',
             created_at TIMESTAMP DEFAULT NOW()
         )
+    `);
+
+    await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS mfa_secret TEXT,
+        ADD COLUMN IF NOT EXISTS mfa_temp_secret TEXT,
+        ADD COLUMN IF NOT EXISTS mfa_enabled_at TIMESTAMP
     `);
 
     await pool.query(`
@@ -165,8 +378,9 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Role, email, dan password wajib diisi.' });
 
     try {
+        const loginEmail = normalizeEmail(email);
         const result = await pool.query(
-            'SELECT * FROM users WHERE email = $1', [email.trim().toLowerCase()]
+            'SELECT * FROM users WHERE email = $1', [loginEmail]
         );
 
         if (result.rows.length === 0) {
@@ -187,21 +401,48 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Login gagal. Periksa kembali role, email, dan password Anda.' });
         }
 
-        const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-        await logActivity('Login', 'SUCCESS', 'Login berhasil', `${user.nama} (${roleLabel})`, ip);
+        const actor = `${user.nama} (${roleLabel(user.role)})`;
 
-        const token = jwt.sign(
-            {
+        if (user.mfa_enabled && user.mfa_secret) {
+            await logActivity('Login', 'INFO', 'Password benar, menunggu verifikasi MFA', actor, ip);
+            return res.json({
+                success: true,
+                mfaRequired: true,
+                mfaToken: createMfaToken(user),
                 userId: user.user_id,
-                role: user.role
-            },
-            JWT_SECRET,
-            { expiresIn: '1d' }
-        );
+                nama: user.nama,
+                email: user.email,
+                role: user.role,
+            });
+        }
 
-        res.json({
+        let mfaSecret = null;
+        if (user.mfa_temp_secret) {
+            try {
+                mfaSecret = unprotectMfaSecret(user.mfa_temp_secret);
+                await logActivity('Keamanan', 'INFO', 'Setup MFA dilanjutkan dengan key yang sama', actor, ip);
+            } catch (err) {
+                console.warn('Gagal membaca temp secret MFA, membuat key setup baru:', err.message);
+            }
+        }
+
+        if (!mfaSecret) {
+            mfaSecret = generateMfaSecret();
+            await pool.query(
+                'UPDATE users SET mfa_temp_secret = $1 WHERE user_id = $2',
+                [protectMfaSecret(mfaSecret), user.user_id]
+            );
+
+            await logActivity('Keamanan', 'INFO', 'Setup MFA dimulai setelah password benar', actor, ip);
+        }
+
+        return res.json({
             success: true,
-            token,
+            mfaRequired: true,
+            mfaSetupRequired: true,
+            mfaToken: createMfaToken(user, true),
+            mfaSecret,
+            otpauthUrl: buildOtpAuthUrl(user, mfaSecret),
             userId: user.user_id,
             nama: user.nama,
             email: user.email,
@@ -210,6 +451,111 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Terjadi kesalahan server.' });
+    }
+});
+
+// POST /api/auth/mfa/setup/verify
+app.post('/api/auth/mfa/setup/verify', mfaLimiter, async (req, res) => {
+    const { mfaToken, code } = req.body;
+    const ip = getIP(req);
+
+    if (!mfaToken || !code) {
+        return res.status(400).json({ error: 'Token MFA dan kode wajib diisi.' });
+    }
+
+    try {
+        const decoded = verifyMfaToken(mfaToken);
+        if (!decoded.setupRequired) {
+            return res.status(400).json({ error: 'Token ini bukan untuk setup MFA.' });
+        }
+
+        const result = await pool.query(
+            'SELECT user_id, nama, email, role, mfa_temp_secret FROM users WHERE user_id = $1',
+            [decoded.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
+        }
+
+        const user = result.rows[0];
+        const actor = `${user.nama} (${roleLabel(user.role)})`;
+
+        if (!user.mfa_temp_secret) {
+            return res.status(400).json({ error: 'Setup MFA belum dimulai. Silakan login ulang.' });
+        }
+
+        const pendingSecret = unprotectMfaSecret(user.mfa_temp_secret);
+        if (!verifyTotp(pendingSecret, code)) {
+            await logActivity('Keamanan', 'ERROR', 'Verifikasi setup MFA gagal', actor, ip);
+            return res.status(401).json({ error: 'Kode MFA tidak valid.' });
+        }
+
+        await pool.query(
+            `UPDATE users
+             SET mfa_enabled = TRUE,
+                 mfa_secret = $1,
+                 mfa_temp_secret = NULL,
+                 mfa_enabled_at = NOW()
+             WHERE user_id = $2`,
+            [protectMfaSecret(pendingSecret), user.user_id]
+        );
+
+        await logActivity('Keamanan', 'SUCCESS', 'MFA berhasil diaktifkan', actor, ip);
+        await logActivity('Login', 'SUCCESS', 'Login berhasil dengan MFA', actor, ip);
+
+        return res.json(buildAuthResponse(user, createSessionToken(user)));
+    } catch (err) {
+        if (isTokenError(err)) {
+            return res.status(401).json({ error: 'Sesi MFA tidak valid atau sudah kedaluwarsa. Silakan login ulang.' });
+        }
+
+        console.error(err);
+        return res.status(500).json({ error: 'Terjadi kesalahan server.' });
+    }
+});
+
+// POST /api/auth/mfa/verify
+app.post('/api/auth/mfa/verify', mfaLimiter, async (req, res) => {
+    const { mfaToken, code } = req.body;
+    const ip = getIP(req);
+
+    if (!mfaToken || !code) {
+        return res.status(400).json({ error: 'Token MFA dan kode wajib diisi.' });
+    }
+
+    try {
+        const decoded = verifyMfaToken(mfaToken);
+        const result = await pool.query(
+            'SELECT user_id, nama, email, role, mfa_enabled, mfa_secret FROM users WHERE user_id = $1',
+            [decoded.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
+        }
+
+        const user = result.rows[0];
+        const actor = `${user.nama} (${roleLabel(user.role)})`;
+
+        if (!user.mfa_enabled || !user.mfa_secret) {
+            return res.status(400).json({ error: 'MFA belum aktif. Silakan lakukan setup MFA.' });
+        }
+
+        if (!verifyTotp(unprotectMfaSecret(user.mfa_secret), code)) {
+            await logActivity('Keamanan', 'ERROR', 'Verifikasi MFA gagal saat login', actor, ip);
+            return res.status(401).json({ error: 'Kode MFA tidak valid.' });
+        }
+
+        await logActivity('Login', 'SUCCESS', 'Login berhasil dengan MFA', actor, ip);
+        return res.json(buildAuthResponse(user, createSessionToken(user)));
+    } catch (err) {
+        if (isTokenError(err)) {
+            return res.status(401).json({ error: 'Sesi MFA tidak valid atau sudah kedaluwarsa. Silakan login ulang.' });
+        }
+
+        console.error(err);
+        return res.status(500).json({ error: 'Terjadi kesalahan server.' });
     }
 });
 
@@ -229,7 +575,8 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(400).json({ error: 'Password harus minimal 8 karakter, mengandung huruf besar, angka, dan simbol.' });
 
     try {
-        const exists = await pool.query('SELECT id FROM users WHERE email = $1', [email.trim().toLowerCase()]);
+        const normalizedEmail = normalizeEmail(email);
+        const exists = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
         if (exists.rows.length > 0)
             return res.status(409).json({ error: 'Email sudah terdaftar!' });
 
@@ -239,11 +586,11 @@ app.post('/api/auth/register', async (req, res) => {
 
         await pool.query(
             'INSERT INTO users (user_id, nama, email, password_hash, role) VALUES ($1,$2,$3,$4,$5)',
-            [userId, nama.trim(), email.trim().toLowerCase(), hash, role]
+            [userId, nama.trim(), normalizedEmail, hash, role]
         );
 
         const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-        await logActivity('Pengguna', 'INFO', `Pengguna baru mendaftar: ${nama.trim()} sebagai ${roleLabel}`, email.trim().toLowerCase(), ip);
+        await logActivity('Pengguna', 'INFO', `Pengguna baru mendaftar: ${nama.trim()} sebagai ${roleLabel}`, normalizedEmail, ip);
 
         res.json({ success: true, message: 'Pendaftaran berhasil!' });
     } catch (err) {

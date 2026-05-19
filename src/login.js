@@ -7,6 +7,7 @@ const ACTIVE_ROLE_KEY        = 'TrustMarket_active_role';
 const ACTIVE_USER_KEY        = 'TrustMarket_active_user';
 const LEGACY_ACTIVE_ROLE_KEY = 'syscore_active_role';
 const VALID_ROLES            = ['admin', 'seller', 'user'];
+let pendingMfaToken          = null;
 
 // ── Fungsi helper API ─────────────────────────────────────────
 async function apiPost(endpoint, data) {
@@ -23,6 +24,84 @@ function setLoginAlert(message) {
     const alertBox = document.getElementById('login-alert');
     alertBox.textContent = message;
     alertBox.style.display = 'block';
+}
+
+function setAlert(alertId, message) {
+    const alertBox = document.getElementById(alertId);
+    if (!alertBox) return;
+    alertBox.textContent = message;
+    alertBox.style.display = 'block';
+}
+
+function clearAlert(alertId) {
+    const alertBox = document.getElementById(alertId);
+    if (!alertBox) return;
+    alertBox.textContent = '';
+    alertBox.style.display = 'none';
+}
+
+function setButtonLoading(button, loadingText, isLoading) {
+    if (!button) return;
+    if (isLoading) {
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = loadingText;
+        button.disabled = true;
+        button.style.opacity = '0.8';
+        return;
+    }
+
+    button.innerHTML = button.dataset.originalText || button.innerHTML;
+    button.disabled = false;
+    button.style.opacity = '1';
+}
+
+function simpanSesi(data) {
+    sessionStorage.setItem(ACTIVE_ROLE_KEY, data.role);
+    sessionStorage.setItem(ACTIVE_USER_KEY, JSON.stringify({
+        userId: data.userId,
+        nama:   data.nama,
+        email:  data.email,
+        role:   data.role,
+        token:  data.token,
+    }));
+    localStorage.removeItem(ACTIVE_ROLE_KEY);
+    localStorage.removeItem(LEGACY_ACTIVE_ROLE_KEY);
+}
+
+function selesaiLogin(data) {
+    pendingMfaToken = null;
+    simpanSesi(data);
+    window.location.href = 'dashboard.html';
+}
+
+function tampilkanSetupMfa(data) {
+    pendingMfaToken = data.mfaToken;
+    document.getElementById('mfa-setup-secret').textContent = data.mfaSecret || '-';
+
+    const setupLink = document.getElementById('mfa-setup-link');
+    setupLink.href = data.otpauthUrl || '#';
+    setupLink.style.display = data.otpauthUrl ? 'inline-flex' : 'none';
+
+    document.getElementById('mfa-setup-code').value = '';
+    clearAlert('mfa-setup-alert');
+    switchView('view-mfa-setup');
+}
+
+function tampilkanVerifikasiMfa(data) {
+    pendingMfaToken = data.mfaToken;
+    document.getElementById('mfa-verify-code').value = '';
+    clearAlert('mfa-verify-alert');
+    switchView('view-mfa-verify');
+}
+
+function cancelMfa() {
+    pendingMfaToken = null;
+    document.getElementById('form-login').reset();
+    switchView('view-login');
+}
+
+function onlyDigits(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 6);
 }
 
 // ── Efek background barang jatuh ─────────────────────────────
@@ -49,7 +128,7 @@ window.addEventListener('DOMContentLoaded', buatEfekBarangJatuh);
 
 // ── Navigasi antar form ───────────────────────────────────────
 function switchView(targetViewId) {
-    ['view-login', 'view-register', 'view-forgot'].forEach(id => {
+    ['view-login', 'view-register', 'view-forgot', 'view-mfa-setup', 'view-mfa-verify'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
     });
     const target = document.getElementById(targetViewId);
@@ -57,7 +136,7 @@ function switchView(targetViewId) {
     target.style.animation = 'none';
     target.offsetHeight;
     target.style.animation = null;
-    document.getElementById('login-alert').style.display = 'none';
+    ['login-alert', 'mfa-setup-alert', 'mfa-verify-alert'].forEach(clearAlert);
 }
 
 // ── Form Login ────────────────────────────────────────────────
@@ -81,26 +160,88 @@ document.getElementById('form-login').addEventListener('submit', async function 
             return;
         }
 
-        // Simpan info sesi ke sessionStorage
-        sessionStorage.setItem(ACTIVE_ROLE_KEY, data.role);
-        sessionStorage.setItem(ACTIVE_USER_KEY, JSON.stringify({
-            userId: data.userId,
-            nama:   data.nama,
-            email:  data.email,
-            role:   data.role,
-            token:  data.token,
-        }));
-        // Hapus key lama (localStorage) agar bersih
-        localStorage.removeItem(ACTIVE_ROLE_KEY);
-        localStorage.removeItem(LEGACY_ACTIVE_ROLE_KEY);
+        if (data.mfaSetupRequired) {
+            tampilkanSetupMfa(data);
+            return;
+        }
 
-        window.location.href = 'dashboard.html';
+        if (data.mfaRequired) {
+            tampilkanVerifikasiMfa(data);
+            return;
+        }
+
+        selesaiLogin(data);
     } catch (err) {
         setLoginAlert('Tidak dapat terhubung ke server. Pastikan aplikasi berjalan.');
     }
 });
 
-// ── Form Register ─────────────────────────────────────────────
+// MFA Forms
+document.getElementById('form-mfa-setup').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const code = onlyDigits(document.getElementById('mfa-setup-code').value);
+    const button = document.getElementById('btn-mfa-setup');
+
+    if (!pendingMfaToken || code.length !== 6) {
+        setAlert('mfa-setup-alert', 'Masukkan kode MFA 6 digit yang valid.');
+        return;
+    }
+
+    try {
+        setButtonLoading(button, '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...', true);
+        const data = await apiPost('/api/auth/mfa/setup/verify', { mfaToken: pendingMfaToken, code });
+
+        if (data.error) {
+            setAlert('mfa-setup-alert', data.error);
+            return;
+        }
+
+        selesaiLogin(data);
+    } catch (err) {
+        setAlert('mfa-setup-alert', 'Tidak dapat terhubung ke server. Pastikan aplikasi berjalan.');
+    } finally {
+        setButtonLoading(button, '', false);
+    }
+});
+
+document.getElementById('form-mfa-verify').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const code = onlyDigits(document.getElementById('mfa-verify-code').value);
+    const button = document.getElementById('btn-mfa-verify');
+
+    if (!pendingMfaToken || code.length !== 6) {
+        setAlert('mfa-verify-alert', 'Masukkan kode MFA 6 digit yang valid.');
+        return;
+    }
+
+    try {
+        setButtonLoading(button, '<i class="fas fa-spinner fa-spin"></i> Memverifikasi...', true);
+        const data = await apiPost('/api/auth/mfa/verify', { mfaToken: pendingMfaToken, code });
+
+        if (data.error) {
+            setAlert('mfa-verify-alert', data.error);
+            return;
+        }
+
+        selesaiLogin(data);
+    } catch (err) {
+        setAlert('mfa-verify-alert', 'Tidak dapat terhubung ke server. Pastikan aplikasi berjalan.');
+    } finally {
+        setButtonLoading(button, '', false);
+    }
+});
+
+['mfa-setup-code', 'mfa-verify-code'].forEach(id => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener('input', function () {
+        this.value = onlyDigits(this.value);
+    });
+});
+
+// Form Register
 document.getElementById('form-register').addEventListener('submit', async function (e) {
     e.preventDefault();
 

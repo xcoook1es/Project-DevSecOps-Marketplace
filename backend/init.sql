@@ -11,8 +11,18 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role        VARCHAR(50)  NOT NULL DEFAULT 'user',
     status      VARCHAR(50)  NOT NULL DEFAULT 'Aktif',
+    mfa_enabled BOOLEAN      NOT NULL DEFAULT FALSE,
+    mfa_secret  TEXT,
+    mfa_temp_secret TEXT,
+    mfa_enabled_at TIMESTAMP,
     created_at  TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS mfa_secret TEXT,
+  ADD COLUMN IF NOT EXISTS mfa_temp_secret TEXT,
+  ADD COLUMN IF NOT EXISTS mfa_enabled_at TIMESTAMP;
 
 -- Tabel produk
 CREATE TABLE IF NOT EXISTS products (
