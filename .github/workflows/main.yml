@@ -121,11 +121,11 @@ jobs:
     needs: build-and-security-check
 
     steps:
-    - name: Checkout Source Code
-      uses: actions/checkout@v4
+    # - name: Checkout Source Code
+    #   uses: actions/checkout@v4
 
-    - name: Start Application Stack
-      run: docker compose up -d --build
+    # - name: Start Application Stack
+    #   run: docker compose up -d --build
 
     - name: Wait for Application to be Ready
       run: |
