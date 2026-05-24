@@ -2,3 +2,4 @@
 10063	IGNORE	(Permissions Policy Header Not Set - opsional)
 90033	IGNORE	(Loosely Scoped Cookie - karena localhost)
 10098	IGNORE	(Cross-Domain Misconfiguration - karena local docker network)
+10055	IGNORE	(CSP unsafe-inline - diperlukan karena arsitektur inline event handler pada frontend statis)
