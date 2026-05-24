@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: db:5432
+    user: trustmarket
+    secureJsonData:
+      password: trustmarket_secret
+    jsonData:
+      sslmode: 'disable'
+      database: trustmarket
+    editable: true
+    uid: postgresql-datasource

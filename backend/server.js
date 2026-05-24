@@ -34,6 +34,14 @@ const httpRequestDuration = new client.Histogram({
     registers: [register],
 });
 
+// Counter: total security events
+const securityEventsTotal = new client.Counter({
+    name: 'security_events_total',
+    help: 'Total jumlah security event',
+    labelNames: ['type', 'severity', 'status'],
+    registers: [register],
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'ganti-dengan-secret-kuat';
@@ -92,6 +100,14 @@ async function logActivity(type, severity, activity, actor, ip = '—') {
             'INSERT INTO system_logs (type, severity, activity, actor, ip_address) VALUES ($1,$2,$3,$4,$5)',
             [type, severity, activity, actor, ip]
         );
+
+        // Increment Prometheus metric
+        const status = severity === 'ERROR' ? 'failed' : (severity === 'SUCCESS' ? 'success' : 'info');
+        securityEventsTotal.inc({
+            type: type || 'unknown',
+            severity: severity || 'unknown',
+            status
+        });
     } catch (err) {
         console.error('⚠️  Gagal mencatat log:', err.message);
     }
